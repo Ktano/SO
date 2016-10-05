@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #define COMANDO_DEBITAR "debitar"
 #define COMANDO_CREDITAR "creditar"
@@ -15,6 +16,7 @@
 #define COMANDO_SIMULAR "simular"
 #define COMANDO_SAIR "sair"
 
+#define NUMERO_MAXIMO_COMANDOS 20
 #define MAXARGS 3
 #define BUFFER_SIZE 100
 
@@ -23,7 +25,9 @@ int main (int argc, char** argv) {
 
     char *args[MAXARGS + 1];
     char buffer[BUFFER_SIZE];
-
+    int pids[NUMERO_MAXIMO_COMANDOS]; // Guarda os pids dos processos criados
+    int nProcesso=0; // guarda o numero de processos já criados
+    
     inicializarContas();
 
     printf("Bem-vinda/o ao i-banco\n\n");
@@ -100,14 +104,33 @@ int main (int argc, char** argv) {
 
     /* Simular */
     else if (strcmp(args[0], COMANDO_SIMULAR) == 0) {
-
-      /* POR COMPLETAR */
-
-      printf("Comando nao implementado\n");
+		int anos;
+		
+		
+      if (numargs < 2) {
+            printf("%s: Sintaxe inválida, tente de novo.\n", COMANDO_SIMULAR);
+            continue;
+            
+        anos = atoi(args[1]);
+		if (nProcesso<NUMERO_MAXIMO_COMANDOS){
+			pids[nProcesso]=fork();
+			if (pids[nProcesso]==0){
+				simular(anos);
+				exit(EXIT_SUCCESS);
+			}
+			else if (pids[nProcesso]>0){
+				nProcesso++;
+				continue;
+			}
+			else
+				printf("%s:Não foi possivel criar o processo",COMANDO_SIMULAR);
+		}
+		else
+			printf("%s:Não foi possivel criar o processo",COMANDO_SIMULAR);
       
-    }
-
-    else {
+      }
+	}
+    else{
       printf("Comando desconhecido. Tente de novo.\n");
     }
 
