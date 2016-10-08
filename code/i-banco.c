@@ -9,14 +9,16 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
+#include <sys/wait.h>
 
 #define COMANDO_DEBITAR "debitar"
 #define COMANDO_CREDITAR "creditar"
 #define COMANDO_LER_SALDO "lerSaldo"
 #define COMANDO_SIMULAR "simular"
 #define COMANDO_SAIR "sair"
+#define ARGUMENTO_AGORA "agora"
 
-#define NUMERO_MAXIMO_COMANDOS 20
 #define MAXARGS 3
 #define BUFFER_SIZE 100
 
@@ -25,8 +27,7 @@ int main (int argc, char** argv) {
 
     char *args[MAXARGS + 1];
     char buffer[BUFFER_SIZE];
-    int pids[NUMERO_MAXIMO_COMANDOS]; // Guarda os pids dos processos criados
-    int nProcesso=0; // guarda o numero de processos já criados
+    int nProcessos=0; /* guarda o numero de processos já criados*/
     
     inicializarContas();
 
@@ -40,10 +41,27 @@ int main (int argc, char** argv) {
         /* EOF (end of file) do stdin ou comando "sair" */
         if (numargs < 0 ||
 	        (numargs > 0 && (strcmp(args[0], COMANDO_SAIR) == 0))) {
-            
-            /* POR COMPLETAR */
+            int pid,status;
+        
+                if(numargs>1 && strcmp(args[0], ARGUMENTO_AGORA) == 0){
+                    int k;
+                    k=kill(0,SIG_USER1);
+                    if (k!=0)
+                        printf("%s %s: ERRO",COMANDO_SAIR,ARGUMENTO_AGORA);
+                }
+                
+                printf("i-banco vai terminar.\n");
+                printf("--\n");
+                int i=0;
+                for(;nProcessos--;nProcessos>0){
+                   pid=wait(&status);
+                   
+                   if(WIFEXITED(status) && WEXITSTATUS(status)==EXIT_SUCCESS)
+                        printf("FILHO TERMINADO (PID=%d; terminou normalmente)",pid);
+                   else
+                        printf("FILHO TERMINADO (PID=%d; terminou abruptamente)",pid);
+                }
 
-            printf("Comando nao implementado\n");            
             
             exit(EXIT_SUCCESS);
         }
@@ -55,6 +73,7 @@ int main (int argc, char** argv) {
         /* Debitar */
         else if (strcmp(args[0], COMANDO_DEBITAR) == 0) {
             int idConta, valor;
+
             if (numargs < 3) {
                 printf("%s: Sintaxe inválida, tente de novo.\n", COMANDO_DEBITAR);
 	           continue;
@@ -72,6 +91,7 @@ int main (int argc, char** argv) {
     /* Creditar */
     else if (strcmp(args[0], COMANDO_CREDITAR) == 0) {
         int idConta, valor;
+        
         if (numargs < 3) {
             printf("%s: Sintaxe inválida, tente de novo.\n", COMANDO_CREDITAR);
             continue;
