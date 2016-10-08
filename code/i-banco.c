@@ -104,32 +104,37 @@ int main (int argc, char** argv) {
 
     /* Simular */
     else if (strcmp(args[0], COMANDO_SIMULAR) == 0) {
-		int anos;
+		int anos,pid;
 		
 		
       if (numargs < 2) {
             printf("%s: Sintaxe inválida, tente de novo.\n", COMANDO_SIMULAR);
             continue;
+      }
             
         anos = atoi(args[1]);
-		if (nProcesso<NUMERO_MAXIMO_COMANDOS){
-			pids[nProcesso]=fork();
-			if (pids[nProcesso]==0){
+        
+            /*Cria o processo*/
+            pid=fork();
+            
+            if(pid<0){
+				printf("%s:Não foi possivel criar o processo \n",COMANDO_SIMULAR);
+                continue;
+            }
+            
+			if (pid==0){
 				simular(anos);
 				exit(EXIT_SUCCESS);
 			}
-			else if (pids[nProcesso]>0){
-				nProcesso++;
+			else{
+				nProcessos++;
 				continue;
 			}
-			else
-				printf("%s:Não foi possivel criar o processo",COMANDO_SIMULAR);
-		}
-		else
-			printf("%s:Não foi possivel criar o processo",COMANDO_SIMULAR);
-      
+			     
       }
-	}
+	
+	
+	/*Comando desconhecido*/
     else{
       printf("Comando desconhecido. Tente de novo.\n");
     }
