@@ -37,6 +37,8 @@ int creditar(int idConta, int valor) {
   return 0;
 }
 
+
+/* -= getSaldo*/
 int lerSaldo(int idConta) {
   atrasar();
   if (!contaExiste(idConta))
@@ -44,9 +46,38 @@ int lerSaldo(int idConta) {
   return contasSaldos[idConta - 1];
 }
 
+int maxSaldo(int n){
+    if (n>0)
+        return n;
+    else
+        return 0;
+}
+
+
+
+/*
+ TAXAJURO
+CUSTOMANUTENCAO 
+ */
+
+int newSaldo(int s1){
+    
+int s2;
+s2 = s1*(1+TAXAJURO)-CUSTOMANUTENCAO;
+res = maxSaldo(s2);
+
+return res;
+}
 
 void simular(int numAnos) {
+int i,s1,s2;
 
-  /* POR COMPLETAR */
+        for (i=0; i <= NUM_CONTAS;i++){
+            
+            int s1 = lerSaldo(i);
+            int s2 = newSaldo(s1);
+            
+            
+        }
       
 }
