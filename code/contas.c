@@ -4,20 +4,32 @@
 #include <stdlib.h>
 
 #define atrasar() sleep(ATRASO)
+#define novoSaldo(A) lerSaldo(A)*(1+TAXAJURO)-CUSTOMANUTENCAO		      		     
+#define creditoSimula(A) novoSaldo(A)-lerSaldo(A)
 		     
 int contasSaldos[NUM_CONTAS];
+
+extern int signal
 
 
 int contaExiste(int idConta) {
   return (idConta > 0 && idConta <= NUM_CONTAS);
 }
 
+
+/*
+ Poe todas contas (que existem) com saldo zero.
+ */
 void inicializarContas() {
   int i;
   for (i=0; i<NUM_CONTAS; i++)
     contasSaldos[i] = 0;
 }
 
+/**
+ * Recebe id da conta e valor a depositar.
+ * Tira esse valor em dinheiro na conta desse id dado.
+ */
 int debitar(int idConta, int valor) {
   atrasar();
   if (!contaExiste(idConta))
@@ -29,6 +41,12 @@ int debitar(int idConta, int valor) {
   return 0;
 }
 
+
+
+/**
+ * Recebe id da conta e valor a depositar.
+ * Poe esse valor em dinheiro na conta desse id dado.
+ */
 int creditar(int idConta, int valor) {
   atrasar();
   if (!contaExiste(idConta))
@@ -38,7 +56,10 @@ int creditar(int idConta, int valor) {
 }
 
 
-/* -= getSaldo*/
+/**
+ * Recebe id da conta.
+ * Le saldo respectivo.
+ */
 int lerSaldo(int idConta) {
   atrasar();
   if (!contaExiste(idConta))
@@ -46,38 +67,21 @@ int lerSaldo(int idConta) {
   return contasSaldos[idConta - 1];
 }
 
-int maxSaldo(int n){
-    if (n>0)
-        return n;
-    else
-        return 0;
-}
-
-
-
-/*
- TAXAJURO
-CUSTOMANUTENCAO 
- */
-
-int newSaldo(int s1){
-    
-int s2;
-s2 = s1*(1+TAXAJURO)-CUSTOMANUTENCAO;
-res = maxSaldo(s2);
-
-return res;
-}
 
 void simular(int numAnos) {
-int i,s1,s2;
+	int ano,idConta;
+			for (ano=0; ano<=numAnos;ano++){
+				printf("SIMULACAO: Ano %d\n",(ano-1));
+				printf("=================\n");
+				for (idConta=1; idConta <= NUM_CONTAS;idConta++){
 
-        for (i=0; i <= NUM_CONTAS;i++){
-            
-            int s1 = lerSaldo(i);
-            int s2 = newSaldo(s1);
-            
-            
-        }
-      
+					printf("Conta %d, Saldo %d\n",idConta,lerSaldo(idConta);
+					
+					if (novoSaldo(idconta)>0)
+						creditar(creditoSimula(idConta))
+					else
+						debitar(lerSaldo(idConta))
+				}
+				printf("\n");	
+			}
 }
