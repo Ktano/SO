@@ -5,11 +5,10 @@
 
 #define atrasar() sleep(ATRASO)
 #define novoSaldo(A) lerSaldo(A)*(1+TAXAJURO)-CUSTOMANUTENCAO		      		     
-#define creditoSimula(A) novoSaldo(A)-lerSaldo(A)
 		     
 int contasSaldos[NUM_CONTAS];
 
-extern int signal
+extern int signal;
 
 
 int contaExiste(int idConta) {
@@ -70,18 +69,22 @@ int lerSaldo(int idConta) {
 
 void simular(int numAnos) {
 	int ano,idConta;
-			for (ano=0; ano<=numAnos;ano++){
-				printf("SIMULACAO: Ano %d\n",(ano-1));
-				printf("=================\n");
-				for (idConta=1; idConta <= NUM_CONTAS;idConta++){
-
-					printf("Conta %d, Saldo %d\n",idConta,lerSaldo(idConta);
-					
-					if (novoSaldo(idconta)>0)
-						creditar(creditoSimula(idConta))
-					else
-						debitar(lerSaldo(idConta))
-				}
-				printf("\n");	
+		for (ano=0; ano<=numAnos;ano++){
+			printf("SIMULACAO: Ano %d\n",(ano-1));
+			printf("=================\n");
+			for (idConta=1; idConta <= NUM_CONTAS;idConta++){
+				int nSaldo;
+				printf("Conta %d, Saldo %d\n",idConta,lerSaldo(idConta));
+				nSaldo = novoSaldo(idConta);
+				if (nSaldo>0)
+					creditar(idConta,nSaldo-lerSaldo(idConta));
+				else
+					debitar(idConta,lerSaldo(idConta));
 			}
+			printf("\n");	
+			if (signal!=0){
+				printf("Simulacao Terminada por Signal");
+				exit(EXIT_FAILURE);
+			}
+		}
 }

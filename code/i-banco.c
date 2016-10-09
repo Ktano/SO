@@ -134,10 +134,10 @@ int main (int argc, char** argv) {
 		int anos,pid;
 		
 		
-      if (numargs < 2) {
-            printf("%s: Sintaxe inválida, tente de novo.\n", COMANDO_SIMULAR);
-            continue;
-      }
+		if (numargs < 2) {
+			printf("%s: Sintaxe inválida, tente de novo.\n", COMANDO_SIMULAR);
+			continue;
+		}
             
         anos = atoi(args[1]);
         
