@@ -4,8 +4,8 @@
 #include <stdlib.h>
 
 #define atrasar() sleep(ATRASO)
-#define novoSaldo(A) lerSaldo(A)*(1+TAXAJURO)-CUSTOMANUTENCAO		      		     
-		     
+#define novoSaldo(A) lerSaldo(A)*(1+TAXAJURO)-CUSTOMANUTENCAO	
+
 int contasSaldos[NUM_CONTAS];
 
 extern int signal;
@@ -84,7 +84,7 @@ void simular(int numAnos) {
 			printf("\n");	
 			if (signal!=0){
 				printf("Simulacao Terminada por Signal");
-				exit(EXIT_FAILURE);
+				exit(EXIT_SUCCESS);
 			}
 		}
 }

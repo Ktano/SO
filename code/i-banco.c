@@ -44,30 +44,27 @@ int main (int argc, char** argv) {
             int i, pid,status;
         
                 if(numargs>1 && strcmp(args[0], ARGUMENTO_AGORA) == 0){
-                    if (kill(0,SIGUSR1)<0)
+                    if (kill(0,SIGUSR1)<0){
                         printf("%s %s: ERRO",COMANDO_SAIR,ARGUMENTO_AGORA);
 						exit(EXIT_FAILURE);
+					}
                 }
-                
+				
                 printf("i-banco vai terminar.\n");
                 printf("--\n");
 				
                 for(i=0;i<nProcessos;i++){
 					pid=wait(&status);
-					
 					/*error on wait*/
 					if(pid<0){
 						printf("%s:ERRO\n\n",COMANDO_SAIR);
 						exit(EXIT_FAILURE);
-					} 
-						
-                   
-                   if(WIFEXITED(status) && WEXITSTATUS(status)==EXIT_SUCCESS)
-                        printf("FILHO TERMINADO (PID=%d; terminou normalmente)\n",pid);
-                   else
-                        printf("FILHO TERMINADO (PID=%d; terminou abruptamente)\n",pid);
-                }
-
+					}
+                    if(WIFEXITED(status))
+						printf("FILHO TERMINADO (PID=%d; terminou normalmente)\n",pid);
+					else
+						printf("FILHO TERMINADO (PID=%d; terminou abruptamente)\n",pid);
+					}
             printf("--\n");
 			printf("i-banco terminou.\n\n");
             exit(EXIT_SUCCESS);
