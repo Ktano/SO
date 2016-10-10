@@ -4,11 +4,11 @@
 #include <stdlib.h>
 
 #define atrasar() sleep(ATRASO)
-#define novoSaldo(A) lerSaldo(A)*(1+TAXAJURO)-CUSTOMANUTENCAO	
+#define novoSaldo(A) (lerSaldo(A)*(1+TAXAJURO)-CUSTOMANUTENCAO)
 
 int contasSaldos[NUM_CONTAS];
 
-extern int signal;
+int sinalRecebido;
 
 
 int contaExiste(int idConta) {
@@ -70,7 +70,7 @@ int lerSaldo(int idConta) {
 void simular(int numAnos) {
 	int ano,idConta;
 		for (ano=0; ano<=numAnos;ano++){
-			printf("SIMULACAO: Ano %d\n",(ano-1));
+			printf("SIMULACAO: Ano %d\n",(ano));
 			printf("=================\n");
 			for (idConta=1; idConta <= NUM_CONTAS;idConta++){
 				int nSaldo;
@@ -82,8 +82,8 @@ void simular(int numAnos) {
 					debitar(idConta,lerSaldo(idConta));
 			}
 			printf("\n");	
-			if (signal!=0){
-				printf("Simulacao Terminada por Signal");
+			if (sinalRecebido!=0){
+				printf("Simulacao Terminada por Signal\n");
 				exit(EXIT_SUCCESS);
 			}
 		}
