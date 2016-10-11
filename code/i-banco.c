@@ -77,7 +77,7 @@ int main (int argc, char** argv) {
 						printf("FILHO TERMINADO (PID=%d; terminou normalmente)\n",pid);
 					else
 						printf("FILHO TERMINADO (PID=%d; terminou abruptamente)\n",pid);
-					}
+		}
             printf("--\n");
 			printf("i-banco terminou.\n\n");
             exit(EXIT_SUCCESS);
