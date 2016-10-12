@@ -1,5 +1,5 @@
 i-banco: commandlinereader.o contas.o i-banco.o
-	gcc -o i-banco commandlinereader.o contas.o i-banco.o
+	gcc -o i-banco i-banco.o commandlinereader.o contas.o 
 commandlinereader.o: commandlinereader.c
 	gcc -g -Wall -pedantic -c commandlinereader.c
 contas.o: contas.c contas.h

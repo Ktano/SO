@@ -23,6 +23,12 @@
 #define BUFFER_SIZE 100
 
 
+/*
+// Prototipos
+*/
+void apanhaUSR1(int s);
+
+
 int main (int argc, char** argv) {
 
     char *args[MAXARGS + 1];
@@ -30,7 +36,14 @@ int main (int argc, char** argv) {
     int nProcessos=0; /* guarda o numero de processos já criados*/
     
     inicializarContas();
-
+	sinalRecebido=0;
+	
+	if(signal(SIGUSR1,apanhaUSR1)==SIG_ERR){
+		printf("ERRO ao criar tratamento de sinal");
+		exit(EXIT_SUCCESS);
+		}
+		
+	
     printf("Bem-vinda/o ao i-banco\n\n");
       
     while (1) {
@@ -43,31 +56,28 @@ int main (int argc, char** argv) {
 	        (numargs > 0 && (strcmp(args[0], COMANDO_SAIR) == 0))) {
             int i, pid,status;
         
-                if(numargs>1 && strcmp(args[0], ARGUMENTO_AGORA) == 0){
-                    if (kill(0,SIGUSR1)<0)
+                if(numargs>1 && strcmp(args[1], ARGUMENTO_AGORA) == 0){
+                    if (kill(0,SIGUSR1)<0){
                         printf("%s %s: ERRO",COMANDO_SAIR,ARGUMENTO_AGORA);
 						exit(EXIT_FAILURE);
+					}
                 }
-                
+				
                 printf("i-banco vai terminar.\n");
                 printf("--\n");
 				
                 for(i=0;i<nProcessos;i++){
 					pid=wait(&status);
-					
 					/*error on wait*/
 					if(pid<0){
 						printf("%s:ERRO\n\n",COMANDO_SAIR);
 						exit(EXIT_FAILURE);
-					} 
-						
-                   
-                   if(WIFEXITED(status) && WEXITSTATUS(status)==EXIT_SUCCESS)
-                        printf("FILHO TERMINADO (PID=%d; terminou normalmente)\n",pid);
-                   else
-                        printf("FILHO TERMINADO (PID=%d; terminou abruptamente)\n",pid);
-                }
-
+					}
+                    if(WIFEXITED(status))
+						printf("FILHO TERMINADO (PID=%d; terminou normalmente)\n",pid);
+					else
+						printf("FILHO TERMINADO (PID=%d; terminou abruptamente)\n",pid);
+		}
             printf("--\n");
 			printf("i-banco terminou.\n\n");
             exit(EXIT_SUCCESS);
@@ -168,4 +178,12 @@ int main (int argc, char** argv) {
 
   } 
 }
+
+void apanhaUSR1(int s){
+		if(signal(SIGUSR1,apanhaUSR1)==SIG_ERR){
+			printf("ERRO ao criar tratamento de sinal");
+			exit(EXIT_SUCCESS);
+		}
+	sinalRecebido=1;
+	}
 

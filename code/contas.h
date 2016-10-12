@@ -19,5 +19,6 @@ int creditar(int idConta, int valor);
 int lerSaldo(int idConta);
 void simular(int numAnos);
 
+extern int sinalRecebido;
 
 #endif
