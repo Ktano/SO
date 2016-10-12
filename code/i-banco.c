@@ -3,6 +3,12 @@
 // Sistemas Operativos, DEI/IST/ULisboa 2016-17
 */
 
+/*
+// Projecto realizado por:
+// Pedro Caetano, N:56564
+// Ricardo Almeida, N:63108
+*/
+
 #include "commandlinereader.h"
 #include "contas.h"
 #include <stdlib.h>
