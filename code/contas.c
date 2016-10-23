@@ -8,7 +8,7 @@
 #define valorCreditar(A) (lerSaldo(A)*(TAXAJURO)-CUSTOMANUTENCAO)
 
 int contasSaldos[NUM_CONTAS];
-pthread_mutex_t MutexConta[NUM_CONTAS]; /**/
+pthread_mutex_t MutexConta[NUM_CONTAS];
 int sinalRecebido;
 
 
@@ -22,7 +22,6 @@ int contaExiste(int idConta) {
  */
 void inicializarContas() {
   int i;
-  
   for (i=0; i<NUM_CONTAS; i++)
     pthread_mutex_init(&MutexConta[i],NULL);
     contasSaldos[i] = 0;
@@ -30,7 +29,7 @@ void inicializarContas() {
 
 
 
-/**CUSTOMANUTENCAOerSaldo(idConta)<=(-
+/**
  * Recebe id da conta e valor a depositar.
  * Tira esse valor em dinheiro na conta desse id dado.
  */
