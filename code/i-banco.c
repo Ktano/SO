@@ -16,7 +16,11 @@
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
+#include <errno.h>
+#include <sys/types.h>
 #include <sys/wait.h>
+
+
 
 #define COMANDO_DEBITAR "debitar"
 #define COMANDO_CREDITAR "creditar"
@@ -45,7 +49,7 @@ int main (int argc, char** argv) {
 	sinalRecebido=0;
 	
 	if(signal(SIGUSR1,apanhaUSR1)==SIG_ERR){
-		printf("ERRO ao criar tratamento de sinal");
+		perror("ERRO ao criar tratamento de sinal");
 		exit(EXIT_SUCCESS);
 		}
 		
@@ -76,8 +80,13 @@ int main (int argc, char** argv) {
 					pid=wait(&status);
 					/*error on wait*/
 					if(pid<0){
-						printf("%s:ERRO\n\n",COMANDO_SAIR);
-						exit(EXIT_FAILURE);
+						
+                        if (errno==EINTR){
+                            i--;
+                            continue;
+                        }
+                            perror("Error na funcao wait.");
+                            exit(EXIT_FAILURE);
 					}
                     if(WIFEXITED(status))
 						printf("FILHO TERMINADO (PID=%d; terminou normalmente)\n",pid);
@@ -161,7 +170,7 @@ int main (int argc, char** argv) {
             pid=fork();
             
             if(pid<0){
-				printf("%s:Não foi possivel criar o processo \n",COMANDO_SIMULAR);
+				perror("Não foi possivel criar o processo \n");
                 continue;
             }
             
@@ -176,7 +185,6 @@ int main (int argc, char** argv) {
 			     
       }
 	
-	
 	/*Comando desconhecido*/
     else{
       printf("Comando desconhecido. Tente de novo.\n");
@@ -187,7 +195,7 @@ int main (int argc, char** argv) {
 
 void apanhaUSR1(int s){
 		if(signal(SIGUSR1,apanhaUSR1)==SIG_ERR){
-			printf("ERRO ao criar tratamento de sinal");
+			perror("ERRO ao criar tratamento de sinal");
 			exit(EXIT_SUCCESS);
 		}
 	sinalRecebido=1;
