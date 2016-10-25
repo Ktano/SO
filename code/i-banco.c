@@ -9,8 +9,6 @@
 // Ricardo Almeida, N:63108
 */
 
-/*array dois semaforos um para ler e outro semaforo tarefas com 0*/
-
 #include "commandlinereader.h"
 #include "contas.h"
 #include <stdlib.h>
@@ -80,7 +78,7 @@ int main (int argc, char** argv) {
 	if(signal(SIGUSR1,apanhaUSR1)==SIG_ERR){
 		perror("ERRO ao criar tratamento de sinal");
 		exit(EXIT_SUCCESS);
-		}
+	}
 		
     printf("Bem-vinda/o ao i-banco\n\n");
       
@@ -96,7 +94,7 @@ int main (int argc, char** argv) {
         
                 if(numargs>1 && strcmp(args[1], ARGUMENTO_AGORA) == 0){
                     if (kill(0,SIGUSR1)<0){
-                        printf("%s %s: ERRO",COMANDO_SAIR,ARGUMENTO_AGORA);
+                        printf("%s %s: ERRO\n",COMANDO_SAIR,ARGUMENTO_AGORA);
 						exit(EXIT_FAILURE);
 					}
                 }
@@ -110,36 +108,38 @@ int main (int argc, char** argv) {
 				
 				for(i=0;i<nProcessos;i++){
 					pid=wait(&status);
+					
 					/*error on wait*/
 					if(pid<0){
-						
-                        if (errno==EINTR){
-                            i--;
-                            continue;
-                        }
-                            perror("Error na funcao wait.");
-                            exit(EXIT_FAILURE);
+						if (errno==EINTR){
+							i--;
+							continue;
+						}
+							perror("Error na funcao wait.\n");
+							exit(EXIT_FAILURE);
 					}
+					
                     if(WIFEXITED(status))
 						printf("FILHO TERMINADO (PID=%d; terminou normalmente)\n",pid);
 					else
 						printf("FILHO TERMINADO (PID=%d; terminou abruptamente)\n",pid);
+				}
 					
-					/*Confirms all threads are terminated*/
-					for(i=0;i<NUM_TRABALHADORAS;i++)
-						pthread_join(tid[i],NULL);
-		}
+			/*Confirms all threads are terminated*/
+			for(i=0;i<NUM_TRABALHADORAS;i++)
+				pthread_join(tid[i],NULL);
+			
             printf("--\n");
 			printf("i-banco terminou.\n\n");
             exit(EXIT_SUCCESS);
         }
     
-        else if (numargs == 0)
-            /* Nenhum argumento; ignora e volta a pedir */
-            continue;
+	else if (numargs == 0)
+		/* Nenhum argumento; ignora e volta a pedir */
+		continue;
             
-        /* Debitar */
-        else if (strcmp(args[0], COMANDO_DEBITAR) == 0) {
+	/* Debitar */
+	else if (strcmp(args[0], COMANDO_DEBITAR) == 0) {
             int idConta, valor;
 
             if (numargs < 3) {
@@ -220,23 +220,25 @@ int main (int argc, char** argv) {
 }
 
 void apanhaUSR1(int s){
-		if(signal(SIGUSR1,apanhaUSR1)==SIG_ERR){
-			perror("ERRO ao criar tratamento de sinal");
-			exit(EXIT_SUCCESS);
-		}
+	if(signal(SIGUSR1,apanhaUSR1)==SIG_ERR){
+		perror("ERRO ao criar tratamento de sinal");
+		exit(EXIT_SUCCESS);
+	}
 	sinalRecebido=1;
 }
 
 void inicializarTarefas(){
 	int i=0,pthread;
+	
 	pthread_mutex_init(&bufferReadMutex,NULL);
 	pthread_mutex_init(&bufferWriteMutex,NULL);
+	
 	sem_init(&semLeitura,0,0);
 	sem_init(&semEscrita,0,CMD_BUFFER_DIM);
 	for(i=0;i<NUM_TRABALHADORAS;i++){
 		pthread=pthread_create(&tid[i],0,trabalhadora,NULL);
 		if(pthread!=0){
-			fprintf(stderr,"Erro ao criar thread");
+			fprintf(stderr,"Erro ao criar thread\n");
 			continue;
 		}
 	}
@@ -281,11 +283,9 @@ void *trabalhadora(){
 		}
 		/*Sair*/
 		else if(cmd.operacao==COMANDO_SAIR_ID){
-			printf("A thread vai terminar");
 			pthread_exit(0);
 		}
 	}
-	return NULL;
 }
 
 void adicionarComando(int Comando, int idConta, int valor){
