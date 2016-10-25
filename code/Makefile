@@ -1,5 +1,5 @@
 i-banco: commandlinereader.o contas.o i-banco.o
-	gcc -o i-banco i-banco.o commandlinereader.o contas.o 
+	gcc -pthread -o i-banco i-banco.o commandlinereader.o contas.o 
 commandlinereader.o: commandlinereader.c
 	gcc -g -Wall -pedantic -c commandlinereader.c
 contas.o: contas.c contas.h
@@ -9,4 +9,4 @@ i-banco.o: i-banco.c
 clean:
 	rm -f *.o i-banco
 zip:
-	zip i-banco.zip *.c *.h Makefile
+	zip G91_56564_63108.zip *.c *.h Makefile
