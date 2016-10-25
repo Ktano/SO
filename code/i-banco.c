@@ -45,6 +45,7 @@
 #define NUM_TRABALHADORAS 3
 #define CMD_BUFFER_DIM (NUM_TRABALHADORAS * 2)
 
+
 typedef struct{
 	int operacao;
 	int idConta;
@@ -53,8 +54,9 @@ typedef struct{
 
 comando_t cmd_buffer[CMD_BUFFER_DIM];
 int buff_write_idx = 0, buff_read_idx = 0;
+pthread_t tid[NUM_TRABALHADORAS];
 sem_t semLeitura,semEscrita;
-pthread_mutex_t bufferReadMutex;
+pthread_mutex_t bufferReadMutex, bufferWriteMutex;
 
 /*
 // Prototipos
@@ -62,7 +64,7 @@ pthread_mutex_t bufferReadMutex;
 void apanhaUSR1(int s);
 void inicializarTarefas();
 void *trabalhadora();
-void adicionarCommando(int Commando, int idConta, int valor);
+void adicionarComando(int Comando, int idConta, int valor);
 
 
 int main (int argc, char** argv) {
@@ -102,12 +104,11 @@ int main (int argc, char** argv) {
                 printf("i-banco vai terminar.\n");
                 printf("--\n");
 				
-				for(i=0;i<NUM_TRABALHADORAS;i++){
-					adicionarCommando(COMANDO_SAIR_ID,0,0);
-					pthread_join()
-				}
+				/*Terminates all threads*/
+				for(i=0;i<NUM_TRABALHADORAS;i++)
+					adicionarComando(COMANDO_SAIR_ID,0,0);
 				
-                for(i=0;i<nProcessos;i++){
+				for(i=0;i<nProcessos;i++){
 					pid=wait(&status);
 					/*error on wait*/
 					if(pid<0){
@@ -123,6 +124,10 @@ int main (int argc, char** argv) {
 						printf("FILHO TERMINADO (PID=%d; terminou normalmente)\n",pid);
 					else
 						printf("FILHO TERMINADO (PID=%d; terminou abruptamente)\n",pid);
+					
+					/*Confirms all threads are terminated*/
+					for(i=0;i<NUM_TRABALHADORAS;i++)
+						pthread_join(tid[i],NULL);
 		}
             printf("--\n");
 			printf("i-banco terminou.\n\n");
@@ -144,7 +149,7 @@ int main (int argc, char** argv) {
 
             idConta = atoi(args[1]);
             valor = atoi(args[2]);
-			adicionarCommando(COMANDO_DEBITAR_ID,idConta,valor);
+			adicionarComando(COMANDO_DEBITAR_ID,idConta,valor);
 
     }
 
@@ -159,7 +164,7 @@ int main (int argc, char** argv) {
 
         idConta = atoi(args[1]);
         valor = atoi(args[2]);
-		adicionarCommando(COMANDO_CREDITAR_ID,idConta,valor);
+		adicionarComando(COMANDO_CREDITAR_ID,idConta,valor);
 
     }
 
@@ -172,7 +177,7 @@ int main (int argc, char** argv) {
             continue;
         }
         idConta = atoi(args[1]);
-		adicionarCommando(COMANDO_LER_SALDO_ID,idConta,0);
+		adicionarComando(COMANDO_LER_SALDO_ID,idConta,0);
     }
 
     /* Simular */
@@ -225,11 +230,11 @@ void apanhaUSR1(int s){
 void inicializarTarefas(){
 	int i=0,pthread;
 	pthread_mutex_init(&bufferReadMutex,NULL);
+	pthread_mutex_init(&bufferWriteMutex,NULL);
 	sem_init(&semLeitura,0,0);
 	sem_init(&semEscrita,0,CMD_BUFFER_DIM);
-	pthread_t tid;
 	for(i=0;i<NUM_TRABALHADORAS;i++){
-		pthread=pthread_create(&tid,0,trabalhadora,NULL);
+		pthread=pthread_create(&tid[i],0,trabalhadora,NULL);
 		if(pthread!=0){
 			fprintf(stderr,"Erro ao criar thread");
 			continue;
@@ -242,12 +247,14 @@ void *trabalhadora(){
 	while(1){
 		sem_wait(&semLeitura);
 		pthread_mutex_lock(&bufferReadMutex);
-		printf("working\n");
+		
 		cmd=cmd_buffer[buff_read_idx];
 		buff_read_idx=(buff_read_idx+1)%CMD_BUFFER_DIM;
+		
 		pthread_mutex_unlock(&bufferReadMutex);
 		sem_post(&semEscrita);
 		
+		/*Debitar*/
 		if(cmd.operacao==COMANDO_DEBITAR_ID){
 			if (debitar (cmd.idConta, cmd.valor) < 0)
 				printf("%s(%d, %d): Erro\n\n", COMANDO_DEBITAR, cmd.idConta, cmd.valor);
@@ -255,12 +262,14 @@ void *trabalhadora(){
 				printf("%s(%d, %d): OK\n\n", COMANDO_DEBITAR, cmd.idConta, cmd.valor);
 		}
 		
+		/*Creditar*/
 		else if(cmd.operacao==COMANDO_CREDITAR_ID){
 			if (creditar (cmd.idConta, cmd.valor) < 0)
 				printf("%s(%d, %d): Erro\n\n", COMANDO_CREDITAR, cmd.idConta, cmd.valor);
 			else
 				printf("%s(%d, %d): OK\n\n", COMANDO_CREDITAR, cmd.idConta, cmd.valor);
 		}
+		/*Ler Saldo*/
 		else if(cmd.operacao==COMANDO_LER_SALDO_ID){
 			int saldo;
 			saldo = lerSaldo (cmd.idConta);
@@ -270,6 +279,7 @@ void *trabalhadora(){
 			else
 				printf("%s(%d): O saldo da conta é %d.\n\n", COMANDO_LER_SALDO, cmd.idConta, saldo);
 		}
+		/*Sair*/
 		else if(cmd.operacao==COMANDO_SAIR_ID){
 			printf("A thread vai terminar");
 			pthread_exit(0);
@@ -278,11 +288,15 @@ void *trabalhadora(){
 	return NULL;
 }
 
-void adicionarCommando(int Commando, int idConta, int valor){
+void adicionarComando(int Comando, int idConta, int valor){
 	sem_wait(&semEscrita);
-	cmd_buffer[buff_write_idx].operacao=(Commando);
+	pthread_mutex_lock(&bufferWriteMutex);
+	
+	cmd_buffer[buff_write_idx].operacao=(Comando);
 	cmd_buffer[buff_write_idx].idConta=(idConta);
 	cmd_buffer[buff_write_idx].valor=(valor);
 	buff_write_idx=(buff_write_idx+1)%CMD_BUFFER_DIM;
+	
+	pthread_mutex_unlock(&bufferWriteMutex);
 	sem_post(&semLeitura);
 }
