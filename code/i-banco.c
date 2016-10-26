@@ -52,6 +52,7 @@ typedef struct{
 
 comando_t cmd_buffer[CMD_BUFFER_DIM];
 int buff_write_idx = 0, buff_read_idx = 0;
+/*Vector para por as tarefas*/
 pthread_t tid[NUM_TRABALHADORAS];
 sem_t semLeitura,semEscrita;
 pthread_mutex_t bufferReadMutex, bufferWriteMutex;
@@ -227,6 +228,18 @@ void apanhaUSR1(int s){
 	sinalRecebido=1;
 }
 
+
+
+/*inicializarTarefas()
+ * 
+ * Cria e inicializa as tarefas dentro do vector tid[NUM_TRABALHADORAS].
+ * 
+ * Mutexes e semaforos:
+ * Cria mutexes para por em seguranca a leitura e escrita no buffer.
+ * Cria os semaforos para leitura e escrita no buffer: semLeitura e semEscrita.
+ * 
+ */
+
 void inicializarTarefas(){
 	int i=0,pthread;
 	
@@ -235,26 +248,37 @@ void inicializarTarefas(){
 	
 	sem_init(&semLeitura,0,0);
 	sem_init(&semEscrita,0,CMD_BUFFER_DIM);
+        
 	for(i=0;i<NUM_TRABALHADORAS;i++){
-		pthread=pthread_create(&tid[i],0,trabalhadora,NULL);
+            
+                /*Cria e inicializa as NUM_TRABALHADORAS tarefas com a funcao *trabalhadora    */
+		pthread=pthread_create(&tid[i],0,trabalhadora,NULL); 
 		if(pthread!=0){
 			fprintf(stderr,"Erro ao criar thread\n");
 			continue;
 		}
 	}
 }
-	
+
+/**
+ *      Copia a estrutura na posicao corrente do vector buffer para uma variavel.
+ *      Com essa variavel usa o comando, id da conta e valor necessarios para a tarefa respectiva do comando.
+ * 
+ */
+
 void *trabalhadora(){
 	comando_t cmd;
-	while(1){
-		sem_wait(&semLeitura);
-		pthread_mutex_lock(&bufferReadMutex);
-		
-		cmd=cmd_buffer[buff_read_idx];
+	while(1){          /* (ciclo infinito) */
+                
+               
+		sem_wait(&semLeitura);                              
+                
+		pthread_mutex_lock(&bufferReadMutex);    
+		cmd=cmd_buffer[buff_read_idx];                        /*Copia a estrutura do vector para a variavel cmd.*/
 		buff_read_idx=(buff_read_idx+1)%CMD_BUFFER_DIM;
-		
-		pthread_mutex_unlock(&bufferReadMutex);
-		sem_post(&semEscrita);
+		pthread_mutex_unlock(&bufferReadMutex);             
+                
+		sem_post(&semEscrita);                                 
 		
 		/*Debitar*/
 		if(cmd.operacao==COMANDO_DEBITAR_ID){
@@ -288,15 +312,20 @@ void *trabalhadora(){
 	}
 }
 
+/**
+ *  Dado o comando a realizar e os argumentos cria a estrutura da tarefa e mete-a no buffer.
+ *  Uma vez no buffer pode ser lido e executado por uma trabalhadora, assim que for possivel.
+ */
+
 void adicionarComando(int Comando, int idConta, int valor){
-	sem_wait(&semEscrita);
+	sem_wait(&semEscrita);                        
+    
 	pthread_mutex_lock(&bufferWriteMutex);
-	
 	cmd_buffer[buff_write_idx].operacao=(Comando);
 	cmd_buffer[buff_write_idx].idConta=(idConta);
 	cmd_buffer[buff_write_idx].valor=(valor);
 	buff_write_idx=(buff_write_idx+1)%CMD_BUFFER_DIM;
-	
 	pthread_mutex_unlock(&bufferWriteMutex);
+        
 	sem_post(&semLeitura);
 }
