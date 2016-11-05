@@ -55,7 +55,7 @@ typedef struct{
 */
 comando_t cmd_buffer[CMD_BUFFER_DIM];
 int buff_write_idx = 0,
- buff_read_idx = 0
+ buff_read_idx = 0,
  num_comandos;
 pthread_t tid[NUM_TRABALHADORAS];
 sem_t semLeitura,semEscrita;
@@ -301,11 +301,11 @@ void *trabalhadora(){
 			pthread_exit(0);
 		}
 		/*Decrementa o número de comandos a executar e sinaliza que é possivel simular*/
-		MutexLock()
+		MutexLock();
 		if(--num_comandos==0){
-			signalPodeSimular()
+			signalPodeSimular();
 		}
-		MutexUnlock()
+		MutexUnlock();
 	}
 }
 
@@ -316,9 +316,9 @@ void adicionarComando(int Comando, int idConta, int valor){
 	cmd_buffer[buff_write_idx].idConta=(idConta);
 	cmd_buffer[buff_write_idx].valor=(valor);
 	buff_write_idx=(buff_write_idx+1)%CMD_BUFFER_DIM;
-	MutexLock()
-	num_comandos++
-	MutexUnlock()
+	MutexLock();
+	num_comandos++;
+	MutexUnlock();
 	SemPost(&semLeitura);
 }
 
