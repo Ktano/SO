@@ -11,7 +11,8 @@ int contasSaldos[NUM_CONTAS];
 pthread_mutex_t MutexConta[NUM_CONTAS];
 int sinalRecebido;
 
-
+void lockConta(int id);
+void unlockConta(int id);
 
 int contaExiste(int idConta) {
     return (idConta > 0 && idConta <= NUM_CONTAS);
@@ -36,16 +37,20 @@ void inicializarContas() {
 int debitar(int idConta, int valor) {
   atrasar();
   
-  pthread_mutex_lock(&MutexConta[idConta]);
+
   
   if (!contaExiste(idConta))
     return -1;
-  if (contasSaldos[idConta - 1] < valor)
-    return -1;
+    
+  lockConta(idConta);
+  if (contasSaldos[idConta - 1] < valor){
+    unlockConta(idConta);
+	return -1;
+  }
+
   atrasar();
   contasSaldos[idConta - 1] -= valor;
-  
-  pthread_mutex_unlock(&MutexConta[idConta]);
+  unlockConta(idConta);
   
   return 0;
 }
@@ -59,13 +64,14 @@ int debitar(int idConta, int valor) {
 int creditar(int idConta, int valor) {
   atrasar();
   
-  pthread_mutex_lock(&MutexConta[idConta]);
+
   
   if (!contaExiste(idConta))
     return -1;
+    
+  lockConta(idConta);
   contasSaldos[idConta - 1] += valor;
-  
-  pthread_mutex_unlock(&MutexConta[idConta]);
+  unlockConta(idConta);
   
 return 0;
 }
@@ -76,16 +82,20 @@ return 0;
  * Le saldo respectivo.
  */
 int lerSaldo(int idConta) {
+  int res;
+  
   atrasar();
 
-   pthread_mutex_lock(&MutexConta[idConta]);
   
   if (!contaExiste(idConta))
     return -1;
 
- pthread_mutex_unlock(&MutexConta[idConta]);
+  lockConta(idConta);
+   
+  res = contasSaldos[idConta - 1];
+  unlockConta(idConta);
   
-  return contasSaldos[idConta - 1]; /*duvida*/
+  return res;
 }
 
 
@@ -111,4 +121,22 @@ void simular(int numAnos) {
 				exit(EXIT_SUCCESS);
 			}
 		}
+}
+
+void lockConta(int id){
+	if(pthread_mutex_lock(&MutexConta[id-1])!=0){
+		fprintf(stderr,"Erro ao bloquear a conta");
+		exit(EXIT_FAILURE);
+		
+	}
+		
+}
+
+void unlockConta(int id){
+	if(pthread_mutex_unlock(&MutexConta[id-1])!=0){
+		fprintf(stderr,"Erro ao desbloquear a conta");
+		exit(EXIT_FAILURE);
+		
+	}
+		
 }

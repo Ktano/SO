@@ -20,7 +20,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <pthread.h>
-#include <semaphore.h>
+#include <semaphore.h> 
 
 
 
@@ -63,6 +63,16 @@ void apanhaUSR1(int s);
 void inicializarTarefas();
 void *trabalhadora();
 void adicionarComando(int Comando, int idConta, int valor);
+
+void initSemRead();
+void initSemWrite();
+void SemPost(sem_t* sem);
+void SemWait(sem_t* sem);
+void initMutexRead();
+void MutexLock();
+void MutexUnlock();
+
+
 
 
 int main (int argc, char** argv) {
@@ -210,6 +220,17 @@ int main (int argc, char** argv) {
 			}
 			     
       }
+    else if (strcmp(args[0], COMANDO_LISTAR) == 0){
+          int index;
+          
+          printf("Conteudo do buffer:\n");
+          MutexLock(&bufferReadMutex);
+          for(index=buff_read_idx;index!=buff_write_idx;index=(index+1)%CMD_BUFFER_DIM){
+              printf("buffer[%d]: Operacao=%d\n",index,cmd_buffer[index].operacao);
+          }
+          MutexUnlock(&bufferReadMutex);
+              
+      }
 	
 	/*Comando desconhecido*/
     else{
@@ -230,16 +251,15 @@ void apanhaUSR1(int s){
 void inicializarTarefas(){
 	int i=0,pthread;
 	
-	pthread_mutex_init(&bufferReadMutex,NULL);
-	pthread_mutex_init(&bufferWriteMutex,NULL);
-	
-	sem_init(&semLeitura,0,0);
-	sem_init(&semEscrita,0,CMD_BUFFER_DIM);
+    initMutexRead();
+	initSemRead();
+	initSemWrite();
+    
 	for(i=0;i<NUM_TRABALHADORAS;i++){
 		pthread=pthread_create(&tid[i],0,trabalhadora,NULL);
 		if(pthread!=0){
 			fprintf(stderr,"Erro ao criar thread\n");
-			continue;
+			exit(EXIT_FAILURE);
 		}
 	}
 }
@@ -247,14 +267,14 @@ void inicializarTarefas(){
 void *trabalhadora(){
 	comando_t cmd;
 	while(1){
-		sem_wait(&semLeitura);
-		pthread_mutex_lock(&bufferReadMutex);
+		SemWait(&semLeitura);
+		MutexLock();
 		
 		cmd=cmd_buffer[buff_read_idx];
 		buff_read_idx=(buff_read_idx+1)%CMD_BUFFER_DIM;
-		
-		pthread_mutex_unlock(&bufferReadMutex);
-		sem_post(&semEscrita);
+
+		MutexUnlock();
+		SemPost(&semEscrita);
 		
 		/*Debitar*/
 		if(cmd.operacao==COMANDO_DEBITAR_ID){
@@ -289,14 +309,69 @@ void *trabalhadora(){
 }
 
 void adicionarComando(int Comando, int idConta, int valor){
-	sem_wait(&semEscrita);
-	pthread_mutex_lock(&bufferWriteMutex);
-	
+	SemWait(&semEscrita);
+
 	cmd_buffer[buff_write_idx].operacao=(Comando);
 	cmd_buffer[buff_write_idx].idConta=(idConta);
 	cmd_buffer[buff_write_idx].valor=(valor);
 	buff_write_idx=(buff_write_idx+1)%CMD_BUFFER_DIM;
 	
-	pthread_mutex_unlock(&bufferWriteMutex);
-	sem_post(&semLeitura);
+	SemPost(&semLeitura);
+}
+
+
+void initSemRead(){
+    
+    if(sem_init(&semLeitura,0,0)==-1){
+        perror("Erro ao criar o semaforo de leitura");
+        exit(EXIT_FAILURE);
+    }
+
+}
+
+void initSemWrite(){
+    
+    if(sem_init(&semEscrita,0,CMD_BUFFER_DIM)==-1){
+        perror("Erro ao criar o semaforo de leitura");
+        exit(EXIT_FAILURE);
+    }
+
+}
+
+void SemPost(sem_t* sem){
+    
+    if(sem_post(sem)==-1){
+        perror("Erro ao fazer post no semaforo");
+        exit(EXIT_FAILURE);
+    }
+
+    
+}
+
+void SemWait(sem_t* sem){
+    
+    if(sem_wait(sem)==-1){
+        perror("Erro ao fazer post no semaforo");
+        exit(EXIT_FAILURE);
+    }
+
+    
+}
+
+void initMutexRead(){
+	pthread_mutex_init(&bufferReadMutex,NULL);
+}
+
+void MutexLock(){
+	if(pthread_mutex_lock(&bufferReadMutex)!=0){
+        fprintf(stderr,"Error creating Mutex");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void MutexUnlock(){
+	if(pthread_mutex_unlock(&bufferReadMutex)!=0){
+        fprintf(stderr,"Error creating Mutex");
+        exit(EXIT_FAILURE);
+    }
 }
