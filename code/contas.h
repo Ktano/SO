@@ -16,6 +16,7 @@ void inicializarContas();
 int contaExiste(int idConta);
 int debitar(int idConta, int valor);
 int creditar(int idConta, int valor);
+int transferir(int idConta, int valor,int idContaDestino);
 int lerSaldo(int idConta);
 void simular(int numAnos);
 

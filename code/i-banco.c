@@ -23,9 +23,9 @@
 #include <semaphore.h>
 
 
-
 #define COMANDO_DEBITAR "debitar"
 #define COMANDO_CREDITAR "creditar"
+#define COMANDO_TRANSFERIR "transferir"
 #define COMANDO_LER_SALDO "lerSaldo"
 #define COMANDO_SIMULAR "simular"
 #define COMANDO_SAIR "sair"
@@ -33,6 +33,7 @@
 
 #define COMANDO_DEBITAR_ID 1
 #define COMANDO_CREDITAR_ID 2
+#define COMANDO_TRANSFERIR_ID 6
 #define COMANDO_LER_SALDO_ID 3
 #define COMANDO_SIMULAR_ID 4
 #define COMANDO_SAIR_ID 5
@@ -44,11 +45,15 @@
 #define CMD_BUFFER_DIM (NUM_TRABALHADORAS * 2)
 
 
+/* Estrutura de um comando*/
 typedef struct{
 	int operacao;
 	int idConta;
 	int valor;
+        int idContaDestino;
+        
 } comando_t;
+
 
 /*
 // Variáveis globais
@@ -62,14 +67,14 @@ sem_t semLeitura,semEscrita;
 pthread_mutex_t bufferReadMutex;
 pthread_cond_t podeSimular;
 
+
 /*
 // Prototipos
 */
 void apanhaUSR1(int s);
 void inicializarTarefas();
 void *trabalhadora();
-void adicionarComando(int Comando, int idConta, int valor);
-
+void adicionarComando(int Comando, int idConta, int valor,int idContaDestino);
 void initSemRead();
 void initSemWrite();
 void SemPost(sem_t* sem);
@@ -80,6 +85,7 @@ void MutexUnlock();
 void initCond();
 void waitPodeSimular();
 void signalPodeSimular();
+
 
 int main (int argc, char** argv) {
 
@@ -120,7 +126,7 @@ int main (int argc, char** argv) {
 
 			/*Terminates all threads*/
 			for(i=0;i<NUM_TRABALHADORAS;i++)
-				adicionarComando(COMANDO_SAIR_ID,0,0);
+				adicionarComando(COMANDO_SAIR_ID,0,0,0);
 
 			for(i=0;i<nProcessos;i++){
 				pid=wait(&status);
@@ -153,8 +159,8 @@ int main (int argc, char** argv) {
 		/* Nenhum argumento; ignora e volta a pedir */
 		continue;
 
-		/* Debitar */
-		else if (strcmp(args[0], COMANDO_DEBITAR) == 0) {
+        /* Debitar */
+        else if (strcmp(args[0], COMANDO_DEBITAR) == 0) {
       int idConta, valor;
 
       if (numargs < 3) {
@@ -164,7 +170,7 @@ int main (int argc, char** argv) {
 
       idConta = atoi(args[1]);
       valor = atoi(args[2]);
-			adicionarComando(COMANDO_DEBITAR_ID,idConta,valor);
+			adicionarComando(COMANDO_DEBITAR_ID,idConta,valor,0);
 
   	}
 
@@ -179,7 +185,7 @@ int main (int argc, char** argv) {
 
       idConta = atoi(args[1]);
       valor = atoi(args[2]);
-			adicionarComando(COMANDO_CREDITAR_ID,idConta,valor);
+			adicionarComando(COMANDO_CREDITAR_ID,idConta,valor,0);
   	}
 
   	/* Ler Saldo */
@@ -191,9 +197,27 @@ int main (int argc, char** argv) {
         continue;
       }
       idConta = atoi(args[1]);
-			adicionarComando(COMANDO_LER_SALDO_ID,idConta,0);
+			adicionarComando(COMANDO_LER_SALDO_ID,idConta,0,0);
+  	}
+  	
+  	/* Transferir */
+  	else if (strcmp(args[0], COMANDO_TRANSFERIR) == 0) {
+      int idConta, idContaDestino,valor;
+
+      if (numargs < 3) {
+        printf("%s: Sintaxe inválida, tente de novo.\n", COMANDO_TRANSFERIR);
+        continue;
+      }
+      
+      idConta = atoi(args[1]);
+      idContaDestino = atoi(args[2]);
+      valor = atoi(args[3]);
+      
+      
+			adicionarComando(COMANDO_TRANSFERIR_ID,idConta,valor,idContaDestino);
   	}
 
+  	
   	/* Simular */
   	else if (strcmp(args[0], COMANDO_SIMULAR) == 0) {
 			int anos,pid;
@@ -286,6 +310,16 @@ void *trabalhadora(){
 			else
 				printf("%s(%d, %d): OK\n\n", COMANDO_CREDITAR, cmd.idConta, cmd.valor);
 		}
+		
+		/*Transferir*/
+		else if(cmd.operacao==COMANDO_TRANSFERIR_ID){
+			if (transferir (cmd.idConta, cmd.valor, cmd.idContaDestino) < 0)
+				printf("%s(%d, %d, %d): Erro\n\n", COMANDO_TRANSFERIR, cmd.idConta, cmd.idContaDestino, cmd.valor);
+			else
+				printf("%s(%d, %d, %d): OK\n\n", COMANDO_TRANSFERIR, cmd.idConta, cmd.idContaDestino, cmd.valor);
+		}
+		
+		
 		/*Ler Saldo*/
 		else if(cmd.operacao==COMANDO_LER_SALDO_ID){
 			int saldo;
@@ -309,12 +343,13 @@ void *trabalhadora(){
 	}
 }
 
-void adicionarComando(int Comando, int idConta, int valor){
+void adicionarComando(int Comando, int idConta, int valor, int idContaDestino){
 	SemWait(&semEscrita);
 
 	cmd_buffer[buff_write_idx].operacao=(Comando);
 	cmd_buffer[buff_write_idx].idConta=(idConta);
 	cmd_buffer[buff_write_idx].valor=(valor);
+        cmd_buffer[buff_write_idx].idContaDestino=(idContaDestino);
 	buff_write_idx=(buff_write_idx+1)%CMD_BUFFER_DIM;
 	MutexLock();
 	num_comandos++;
@@ -322,80 +357,90 @@ void adicionarComando(int Comando, int idConta, int valor){
 	SemPost(&semLeitura);
 }
 
+/*functions*/
 
-void initSemRead(){
+    /*semaforo functions*/
 
-    if(sem_init(&semLeitura,0,0)==-1){
-        perror("Erro ao criar o semaforo de leitura");
-        exit(EXIT_FAILURE);
+    void initSemRead(){
+
+        if(sem_init(&semLeitura,0,0)==-1){
+            perror("Erro ao criar o semaforo de leitura");
+            exit(EXIT_FAILURE);
+        }
+
     }
 
-}
+    void initSemWrite(){
 
-void initSemWrite(){
+        if(sem_init(&semEscrita,0,CMD_BUFFER_DIM)==-1){
+            perror("Erro ao criar o semaforo de leitura");
+            exit(EXIT_FAILURE);
+        }
 
-    if(sem_init(&semEscrita,0,CMD_BUFFER_DIM)==-1){
-        perror("Erro ao criar o semaforo de leitura");
-        exit(EXIT_FAILURE);
     }
 
-}
+    void SemPost(sem_t* sem){
 
-void SemPost(sem_t* sem){
+        if(sem_post(sem)==-1){
+            perror("Erro ao fazer post no semaforo");
+            exit(EXIT_FAILURE);
+        }
 
-    if(sem_post(sem)==-1){
-        perror("Erro ao fazer post no semaforo");
-        exit(EXIT_FAILURE);
+
+    }
+
+    void SemWait(sem_t* sem){
+
+        if(sem_wait(sem)==-1){
+            perror("Erro ao fazer post no semaforo");
+            exit(EXIT_FAILURE);
+        }
+
+
+    }
+
+    /*mutex functions*/
+
+    void initMutexRead(){
+            pthread_mutex_init(&bufferReadMutex,NULL);
+    }
+
+    void MutexLock(){
+            if(pthread_mutex_lock(&bufferReadMutex)!=0){
+            fprintf(stderr,"Erro ao criar o Mutex");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    void MutexUnlock(){
+            if(pthread_mutex_unlock(&bufferReadMutex)!=0){
+            fprintf(stderr,"Error creating Mutex");
+            exit(EXIT_FAILURE);
+        }
     }
 
 
-}
+    /*simular functions*/
 
-void SemWait(sem_t* sem){
-
-    if(sem_wait(sem)==-1){
-        perror("Erro ao fazer post no semaforo");
-        exit(EXIT_FAILURE);
+    void initCond(){
+            if (pthread_cond_init(&podeSimular,NULL)!=0){
+                    fprintf(stderr,"Erro ao criar a condição");
+                    exit(EXIT_FAILURE);
+            }
     }
 
 
-}
 
-void initMutexRead(){
-	pthread_mutex_init(&bufferReadMutex,NULL);
-}
-
-void MutexLock(){
-	if(pthread_mutex_lock(&bufferReadMutex)!=0){
-        fprintf(stderr,"Erro ao criar o Mutex");
-        exit(EXIT_FAILURE);
+    void waitPodeSimular(){
+            if(pthread_cond_wait(&podeSimular,&bufferReadMutex)!=0){
+                    fprintf(stderr,"Erro durante a espera da condição");
+                    exit(EXIT_FAILURE);
+            }
     }
-}
 
-void MutexUnlock(){
-	if(pthread_mutex_unlock(&bufferReadMutex)!=0){
-        fprintf(stderr,"Error creating Mutex");
-        exit(EXIT_FAILURE);
+    void signalPodeSimular(){
+            if(pthread_cond_signal(&podeSimular)!=0){
+                    fprintf(stderr,"Erro durante a espera da condição");
+                    exit(EXIT_FAILURE);
+            }
     }
-}
-
-void initCond(){
-	if (pthread_cond_init(&podeSimular,NULL)!=0){
-		fprintf(stderr,"Erro ao criar a condição");
-		exit(EXIT_FAILURE);
-	}
-}
-
-void waitPodeSimular(){
-	if(pthread_cond_wait(&podeSimular,&bufferReadMutex)!=0){
-		fprintf(stderr,"Erro durante a espera da condição");
-		exit(EXIT_FAILURE);
-	}
-}
-
-void signalPodeSimular(){
-	if(pthread_cond_signal(&podeSimular)!=0){
-		fprintf(stderr,"Erro durante a espera da condição");
-		exit(EXIT_FAILURE);
-	}
-}

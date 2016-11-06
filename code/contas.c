@@ -1,3 +1,6 @@
+
+
+
 #include "contas.h"
 #include <unistd.h>
 #include <stdio.h>
@@ -76,6 +79,52 @@ int creditar(int idConta, int valor) {
 return 0;
 }
 
+/**
+ * Recebe id da conta origem, valor a transferir e valor a transferir.
+ * Tira esse valor em dinheiro na conta origem.
+ * Poe esse valor em dinheiro na conta destino.
+ */
+int transferir(int idConta, int valor, int idContaDestino) {
+    int idConta1 , idConta2; 
+    idConta1 = idConta;
+    idConta2 = idContaDestino;
+    atrasar();
+     
+     
+if (!contaExiste(idConta) || !contaExiste(idConta2))
+    return -1;
+    
+  
+                /*Correcao de ordem*/
+  /*Caso de idContaDestino < idConta (de origem)*/
+  if (idContaDestino < idConta){
+      idConta1 = idContaDestino;
+      idConta2 = idConta;
+  }
+  
+  /*por ordem*/
+  lockConta(idConta1);
+  lockConta(idConta2);
+  
+  /*Nao pode mandar dinheiro se nao tiver suficiente*/
+  if ((idConta == idContaDestino) || (contasSaldos[idConta1 - 1] < valor)){
+    /*por ordem*/
+    unlockConta(idConta1);
+    unlockConta(idConta2);
+	return -1;
+  }
+
+  
+  contasSaldos[idConta - 1] -= valor;
+  contasSaldos[idContaDestino - 1] += valor;
+  
+  /*por ordem*/
+  unlockConta(idConta1);
+  unlockConta(idConta2);
+  
+  return 0;
+}
+
 
 /**
  * Recebe id da conta.
@@ -123,18 +172,21 @@ void simular(int numAnos) {
 		}
 }
 
-void lockConta(int id){
-	if(pthread_mutex_lock(&MutexConta[id-1])!=0){
-		fprintf(stderr,"Erro ao bloquear a conta");
+
+
+void unlockConta(int id){
+	if(pthread_mutex_unlock(&MutexConta[id-1])!=0){
+		fprintf(stderr,"Erro ao desbloquear a conta");
 		exit(EXIT_FAILURE);
 		
 	}
 		
 }
 
-void unlockConta(int id){
-	if(pthread_mutex_unlock(&MutexConta[id-1])!=0){
-		fprintf(stderr,"Erro ao desbloquear a conta");
+
+void lockConta(int id){
+	if(pthread_mutex_lock(&MutexConta[id-1])!=0){
+		fprintf(stderr,"Erro ao bloquear a conta");
 		exit(EXIT_FAILURE);
 		
 	}
