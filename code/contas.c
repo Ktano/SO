@@ -107,7 +107,7 @@ if (!contaExiste(idConta) || !contaExiste(idConta2))
   lockConta(idConta2);
   
   /*Nao pode mandar dinheiro se nao tiver suficiente*/
-  if ((idConta == idContaDestino) || (contasSaldos[idConta1 - 1] < valor)){
+  if ((idConta == idContaDestino) || (contasSaldos[idConta - 1] < valor)){
     /*por ordem*/
     unlockConta(idConta1);
     unlockConta(idConta2);
