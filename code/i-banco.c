@@ -38,7 +38,7 @@
 #define COMANDO_SIMULAR_ID 4
 #define COMANDO_SAIR_ID 5
 
-#define MAXARGS 3
+#define MAXARGS 4
 #define BUFFER_SIZE 100
 
 #define NUM_TRABALHADORAS 3
@@ -166,7 +166,7 @@ int main (int argc, char** argv) {
       if (numargs < 3) {
         printf("%s: Sintaxe inválida, tente de novo.\n", COMANDO_DEBITAR);
        continue;
-      }
+      }  
 
       idConta = atoi(args[1]);
       valor = atoi(args[2]);

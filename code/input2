@@ -3,5 +3,21 @@ creditar 2 1200
 creditar 3 3000
 creditar 4 10000
 transferir 1 2 300
+lerSaldo 1
+lerSaldo 2
+transferir 4 1 1000
+transferir 4 1 1000
+lerSaldo 1
+lerSaldo 2
+lerSaldo 3
+lerSaldo 3
+lerSaldo 4
+transferir 4 3 1000
+transferir 3 4 1000
+transferir 4 3 1000
+transferir 3 4 1000
+transferir 4 3 1000
+lerSaldo 3
+lerSaldo 4
 sair
 
