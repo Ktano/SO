@@ -21,6 +21,7 @@
 #include <sys/wait.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <sys/types.h>
 
 
 #define COMANDO_DEBITAR "debitar"
@@ -50,7 +51,7 @@ typedef struct{
 	int operacao;
 	int idConta;
 	int valor;
-        int idContaDestino;
+    int idContaDestino;
         
 } comando_t;
 
@@ -61,10 +62,10 @@ typedef struct{
 comando_t cmd_buffer[CMD_BUFFER_DIM];
 int buff_write_idx = 0,
  buff_read_idx = 0,
- num_comandos;
+ num_comandos=0;
 pthread_t tid[NUM_TRABALHADORAS];
 sem_t semLeitura,semEscrita;
-pthread_mutex_t bufferReadMutex;
+pthread_mutex_t bufferReadMutex,cmdsMutex;
 pthread_cond_t podeSimular;
 
 
@@ -80,12 +81,16 @@ void initSemWrite();
 void SemPost(sem_t* sem);
 void SemWait(sem_t* sem);
 void initMutexRead();
-void MutexLock();
-void MutexUnlock();
+void ReadLock();
+void ReadUnlock();
+void cmdInit();
+void cmdLock();
+void cmdUnlock();
 void initCond();
 void waitPodeSimular();
 void signalPodeSimular();
 
+void log_command(char* command_name, long tid);
 
 int main (int argc, char** argv) {
 
@@ -229,7 +234,7 @@ int main (int argc, char** argv) {
 
     	anos = atoi(args[1]);
 			/*Teste se existem comandos a executar*/
-			MutexLock();
+			cmdLock();
 			while(num_comandos!=0) waitPodeSimular();
     	/*Cria o processo*/
     	pid=fork();
@@ -240,11 +245,12 @@ int main (int argc, char** argv) {
 
 			if (pid==0){
 				simular(anos);
+                cmdUnlock();
 				exit(EXIT_SUCCESS);
 			}
 			else{
 				nProcessos++;
-				MutexUnlock();
+				cmdUnlock();
 				continue;
 			}
 
@@ -268,8 +274,8 @@ void apanhaUSR1(int s){
 void inicializarTarefas(){
 	int i=0,pthread;
 
-	num_comandos=0;
-  initMutexRead();
+    initMutexRead();
+    cmdInit();
 	initSemRead();
 	initSemWrite();
 	initCond();
@@ -283,40 +289,82 @@ void inicializarTarefas(){
 	}
 }
 
+
+
+void log_command(char* command_name, long tid){
+   
+    FILE *f = fopen("log.txt", "a");
+    
+    /*error*/
+if (f == NULL){
+    perror("Erro ao abrir o log.\n");
+    exit(1);
+}
+fprintf(f,"%ld: %s\n", tid,command_name);
+
+
+fclose(f);
+}
+
 void *trabalhadora(){
 	comando_t cmd;
+        
+        pthread_t tid;
+        tid = pthread_self();
+        
+        
 	while(1){
 		SemWait(&semLeitura);
-		MutexLock();
+		ReadLock();
 
 		cmd=cmd_buffer[buff_read_idx];
 		buff_read_idx=(buff_read_idx+1)%CMD_BUFFER_DIM;
 
-		MutexUnlock();
+		ReadUnlock();
 		SemPost(&semEscrita);
 
 		/*Debitar*/
 		if(cmd.operacao==COMANDO_DEBITAR_ID){
 			if (debitar (cmd.idConta, cmd.valor) < 0)
 				printf("%s(%d, %d): Erro\n\n", COMANDO_DEBITAR, cmd.idConta, cmd.valor);
-			else
+                               
+                                
+			else{
 				printf("%s(%d, %d): OK\n\n", COMANDO_DEBITAR, cmd.idConta, cmd.valor);
-		}
+                                
+                            /* foi consumida*/
+                                
+                                
+                                log_command(COMANDO_DEBITAR,tid);
+                        }
+                }
 
 		/*Creditar*/
 		else if(cmd.operacao==COMANDO_CREDITAR_ID){
 			if (creditar (cmd.idConta, cmd.valor) < 0)
 				printf("%s(%d, %d): Erro\n\n", COMANDO_CREDITAR, cmd.idConta, cmd.valor);
-			else
+			else{
 				printf("%s(%d, %d): OK\n\n", COMANDO_CREDITAR, cmd.idConta, cmd.valor);
+                            
+                            /* foi consumida*/
+                               
+                                
+                                log_command(COMANDO_CREDITAR,tid);
+                        }
 		}
 		
 		/*Transferir*/
 		else if(cmd.operacao==COMANDO_TRANSFERIR_ID){
 			if (transferir (cmd.idConta, cmd.valor, cmd.idContaDestino) < 0)
-				printf("%s(%d, %d, %d): Erro\n\n", COMANDO_TRANSFERIR, cmd.idConta, cmd.idContaDestino, cmd.valor);
-			else
+				printf("Erro ao %s %d da conta %d para a conta %d\n\n", COMANDO_TRANSFERIR, cmd.valor, cmd.idConta, cmd.idContaDestino );
+			else{
 				printf("%s(%d, %d, %d): OK\n\n", COMANDO_TRANSFERIR, cmd.idConta, cmd.idContaDestino, cmd.valor);
+                                
+                            /* foi consumida*/
+                               
+                                
+                                log_command(COMANDO_TRANSFERIR,tid);
+                        }
 		}
 		
 		
@@ -327,19 +375,25 @@ void *trabalhadora(){
 
 			if (saldo < 0)
 				printf("%s(%d): Erro.\n\n", COMANDO_LER_SALDO, cmd.idConta);
-			else
+			else{
 				printf("%s(%d): O saldo da conta é %d.\n\n", COMANDO_LER_SALDO, cmd.idConta, saldo);
+                                
+                            /* foi consumida*/
+                               
+                                
+                                log_command(COMANDO_TRANSFERIR,tid);
+                        }
 		}
 		/*Sair*/
 		else if(cmd.operacao==COMANDO_SAIR_ID){
 			pthread_exit(0);
 		}
 		/*Decrementa o número de comandos a executar e sinaliza que é possivel simular*/
-		MutexLock();
+		cmdLock();
 		if(--num_comandos==0){
 			signalPodeSimular();
 		}
-		MutexUnlock();
+		cmdUnlock();
 	}
 }
 
@@ -349,11 +403,11 @@ void adicionarComando(int Comando, int idConta, int valor, int idContaDestino){
 	cmd_buffer[buff_write_idx].operacao=(Comando);
 	cmd_buffer[buff_write_idx].idConta=(idConta);
 	cmd_buffer[buff_write_idx].valor=(valor);
-        cmd_buffer[buff_write_idx].idContaDestino=(idContaDestino);
+    cmd_buffer[buff_write_idx].idContaDestino=(idContaDestino);
 	buff_write_idx=(buff_write_idx+1)%CMD_BUFFER_DIM;
-	MutexLock();
+	cmdLock();
 	num_comandos++;
-	MutexUnlock();
+	cmdUnlock();
 	SemPost(&semLeitura);
 }
 
@@ -405,14 +459,14 @@ void adicionarComando(int Comando, int idConta, int valor, int idContaDestino){
             pthread_mutex_init(&bufferReadMutex,NULL);
     }
 
-    void MutexLock(){
+    void ReadLock(){
             if(pthread_mutex_lock(&bufferReadMutex)!=0){
             fprintf(stderr,"Erro ao criar o Mutex");
             exit(EXIT_FAILURE);
         }
     }
 
-    void MutexUnlock(){
+    void ReadUnlock(){
             if(pthread_mutex_unlock(&bufferReadMutex)!=0){
             fprintf(stderr,"Error creating Mutex");
             exit(EXIT_FAILURE);
@@ -428,11 +482,29 @@ void adicionarComando(int Comando, int idConta, int valor, int idContaDestino){
                     exit(EXIT_FAILURE);
             }
     }
-
+    
+    void cmdInit(){
+        pthread_mutex_init(&cmdsMutex,NULL);
+        
+    }
+    
+    void cmdLock(){
+                if(pthread_mutex_lock(&cmdsMutex)!=0){
+                fprintf(stderr,"Erro ao criar o Mutex");
+                exit(EXIT_FAILURE);
+            }
+        }
+    
+    void cmdUnlock(){
+                if(pthread_mutex_unlock(&cmdsMutex)!=0){
+                fprintf(stderr,"Error creating Mutex");
+                exit(EXIT_FAILURE);
+            }
+        }
 
 
     void waitPodeSimular(){
-            if(pthread_cond_wait(&podeSimular,&bufferReadMutex)!=0){
+            if(pthread_cond_wait(&podeSimular,&cmdsMutex)!=0){
                     fprintf(stderr,"Erro durante a espera da condição");
                     exit(EXIT_FAILURE);
             }
