@@ -90,7 +90,7 @@ void initCond();
 void waitPodeSimular();
 void signalPodeSimular();
 
-void log_command(char* command_name, long tid);
+void log_command(char* command_name, int tid);
 
 int main (int argc, char** argv) {
 
@@ -238,12 +238,33 @@ int main (int argc, char** argv) {
 			while(num_comandos!=0) waitPodeSimular();
     	/*Cria o processo*/
     	pid=fork();
+        
+        /*se processo nao foi criado*/
       if(pid<0){
 				perror("Não foi possivel criar o processo \n");
         continue;
       }
-
+        /*processo criado*/
+        
 			if (pid==0){
+                            /*filho*/
+                            
+                            
+                                int fp;
+                           
+                            /*para nome*/
+                                
+                                char name[20]; 
+                                
+                                sprintf(name, "i-banco-sim-%ld.txt", (long)getpid());
+   
+                                /*-*/
+                                
+                                fp = fopen(name,"a");
+                                
+                                close(1);
+                                dup(fp);
+                                
 				simular(anos);
                 cmdUnlock();
 				exit(EXIT_SUCCESS);
@@ -291,7 +312,7 @@ void inicializarTarefas(){
 
 
 
-void log_command(char* command_name, long tid){
+void log_command(char* command_name, int tid){
    
     FILE *f = fopen("log.txt", "a");
     
@@ -300,7 +321,7 @@ if (f == NULL){
     perror("Erro ao abrir o log.\n");
     exit(1);
 }
-fprintf(f,"%ld: %s\n", tid,command_name);
+fprintf(f,"%d: %s\n", tid,command_name);
 
 
 fclose(f);
