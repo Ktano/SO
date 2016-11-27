@@ -12,6 +12,8 @@ lerSaldo 2
 lerSaldo 3
 lerSaldo 3
 lerSaldo 4
+simular 0
+simular 1
 transferir 4 3 1000
 transferir 3 4 1000
 transferir 4 3 1000
@@ -19,5 +21,7 @@ transferir 3 4 1000
 transferir 4 3 1000
 lerSaldo 3
 lerSaldo 4
+debitar 1 100
+debitar 2 100
 sair
 

@@ -6,15 +6,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <string.h>
 
 #define atrasar() sleep(ATRASO)
+#define MAX_LOG_MESSAGE 40
 
 int contasSaldos[NUM_CONTAS];
 pthread_mutex_t MutexConta[NUM_CONTAS];
 int sinalRecebido;
+int logFile;
 
 void lockConta(int id);
 void unlockConta(int id);
+void writeLog(char* str);
 
 int contaExiste(int idConta) {
     return (idConta > 0 && idConta <= NUM_CONTAS);
@@ -52,9 +56,13 @@ int debitar(int idConta, int valor) {
 
   atrasar();
   contasSaldos[idConta - 1] -= valor;
-  unlockConta(idConta);
-  
-  return 0;
+  if(logFile>0){
+    char logMessage[MAX_LOG_MESSAGE];
+    snprintf(logMessage,MAX_LOG_MESSAGE,"%lu: debitar %d %d\n", pthread_self(),idConta,valor);
+    writeLog(logMessage);
+  }
+    unlockConta(idConta);
+    return 0;
 }
 
 
@@ -73,6 +81,11 @@ int creditar(int idConta, int valor) {
     
   lockConta(idConta);
   contasSaldos[idConta - 1] += valor;
+  if(logFile>0){
+    char logMessage[MAX_LOG_MESSAGE];
+    snprintf(logMessage,MAX_LOG_MESSAGE,"%lu: creditar %d %d\n", pthread_self(),idConta,valor);
+    writeLog(logMessage);
+  }
   unlockConta(idConta);
   
 return 0;
@@ -118,6 +131,11 @@ if (!contaExiste(idConta) || !contaExiste(idConta2))
   contasSaldos[idContaDestino - 1] += valor;
   
   /*por ordem*/
+ if(logFile>0){
+    char logMessage[MAX_LOG_MESSAGE];
+    snprintf(logMessage,MAX_LOG_MESSAGE,"%lu: transferir %d %d %d\n", pthread_self(),idConta,idContaDestino,valor);
+    writeLog(logMessage);
+  }
   unlockConta(idConta1);
   unlockConta(idConta2);
   
@@ -141,6 +159,11 @@ int lerSaldo(int idConta) {
   lockConta(idConta);
    
   res = contasSaldos[idConta - 1];
+  if(logFile>0){
+    char logMessage[MAX_LOG_MESSAGE];
+    snprintf(logMessage,MAX_LOG_MESSAGE,"%lu: transferir %d\n", pthread_self(),idConta);
+    writeLog(logMessage);
+  }
   unlockConta(idConta);
   
   return res;
@@ -153,11 +176,14 @@ void simular(int numAnos) {
             printf("SIMULACAO: Ano %d\n",(ano));
             printf("=================\n");
             for (idConta=1; idConta <= NUM_CONTAS;idConta++){
+                if(ano>0){
+                    saldo = lerSaldo(idConta);
+                    creditar(idConta, saldo * TAXAJURO);
+                    saldo = lerSaldo(idConta);
+                    debitar(idConta, (CUSTOMANUTENCAO > saldo) ? saldo : CUSTOMANUTENCAO);
+                }
                 saldo = lerSaldo(idConta);
                 printf("Conta %d, Saldo %d\n",idConta,saldo);
-                creditar(idConta, saldo * TAXAJURO);
-                saldo = lerSaldo(idConta);
-                debitar(idConta, (CUSTOMANUTENCAO > saldo) ? saldo : CUSTOMANUTENCAO);
             }
             printf("\n");	
             if (sinalRecebido!=0){
@@ -186,4 +212,10 @@ void lockConta(int id){
 		
 	}
 		
+}
+
+void writeLog(char* str){
+    if(write(logFile,str,(strlen(str))*sizeof(char))<0)
+        perror("Erro ao escrever no log");
+        
 }

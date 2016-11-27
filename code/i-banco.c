@@ -73,7 +73,7 @@ pthread_t tid[NUM_TRABALHADORAS];
 sem_t semLeitura,semEscrita;
 pthread_mutex_t bufferReadMutex,cmdsMutex;
 pthread_cond_t podeSimular;
-FILE *f;
+int logFile;
 
 
 /*
@@ -280,13 +280,14 @@ int main (int argc, char** argv) {
                 
                 snprintf(name,MAX_SIMULAR_NAME, "i-banco-sim-%d.txt",getpid());
 
-                /*Starts by closing the previous file*/
-                //fclose(f);
                 
-                fp = open(name,O_CREAT | O_WRONLY,S_IRUSR | S_IWUSR);
+                if((fp = open(name,O_CREAT | O_WRONLY,S_IRUSR | S_IWUSR))<0){
+                    perror("Erro criar ficheiro.\n");
+                    exit(EXIT_SUCCESS);
+                };
                 
+                logFile=-1; /*torna o file descriptor invalido*/
                 dup2(fp,1);
-                                
                 simular(anos);
                 cmdUnlock();
                 close(fp);
@@ -341,31 +342,23 @@ void inicializarTarefas(){
 
 void open_log(){
    
-    f = fopen(LOG_FILE, "w");
+    logFile=open(LOG_FILE,O_CREAT | O_WRONLY,S_IRUSR | S_IWUSR);
     
-    
-    if (f == NULL){
+    if (logFile <0){
         perror("Erro ao abrir o log.\n");
-        exit(1);
+        exit(EXIT_SUCCESS);
     }
     
 }
 
 void close_log(){
-    fclose(f);
+    
+    if(close(logFile)<0){
+     perror("Erro ao fechar o log.\n");
+     exit(EXIT_SUCCESS);
+    }
 }
 
-void add_on_log1(char* command_name, long tid, int idConta){
-    fprintf(f,"%ld: %s(%d)\n", tid,command_name,idConta);
-}
-
-void add_on_log2(char* command_name, long tid, int idConta, int valor){
-    fprintf(f,"%ld: %s(%d,%d)\n", tid,command_name,idConta,valor);
-}
-
- void add_on_log3(char* command_name,long tid, int idConta, int idContaDestino, int valor){
-    fprintf(f,"%ld: %s(%d,%d,%d)\n", tid,command_name,idConta,idContaDestino,valor);
-}
 
      	 
 
@@ -374,10 +367,6 @@ void add_on_log2(char* command_name, long tid, int idConta, int valor){
 
 void *trabalhadora(){
         comando_t cmd;
-        
-        pthread_t tid;
-        tid = pthread_self();
-        
         
         while(1){
                 SemWait(&semLeitura);
@@ -400,9 +389,6 @@ void *trabalhadora(){
                                 
                             /* foi consumida*/
                                 
-                                
-                                /*2 args*/
-                                add_on_log2(COMANDO_DEBITAR,tid, cmd.idConta, cmd.valor);
                         }
                 }
 
@@ -416,8 +402,6 @@ void *trabalhadora(){
                             /* foi consumida*/
                                
                                 
-                                /*2 args*/
-                                add_on_log2(COMANDO_CREDITAR,tid, cmd.idConta, cmd.valor);
                         }
                 }
                 
@@ -429,9 +413,6 @@ void *trabalhadora(){
                                 printf("%s(%d, %d, %d): OK\n\n", COMANDO_TRANSFERIR, cmd.idConta, cmd.idContaDestino, cmd.valor);
                                 
                             /* foi consumida*/
-                               
-                                /*3 args*/
-                                add_on_log3(COMANDO_TRANSFERIR,tid, cmd.idConta, cmd.idContaDestino, cmd.valor);
                         }
                 }
                 
@@ -448,9 +429,6 @@ void *trabalhadora(){
                                 
                             /* foi consumida*/
                                
-                                
-                                /* 1 args*/
-                                add_on_log1(COMANDO_LER_SALDO,tid, cmd.idConta);
                         }
                 }
                 /*Sair*/
