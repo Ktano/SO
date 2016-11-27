@@ -22,6 +22,9 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 
 
 #define COMANDO_DEBITAR "debitar"
@@ -31,6 +34,8 @@
 #define COMANDO_SIMULAR "simular"
 #define COMANDO_SAIR "sair"
 #define ARGUMENTO_AGORA "agora"
+
+#define LOG_FILE "log.txt"
 
 #define COMANDO_DEBITAR_ID 1
 #define COMANDO_CREDITAR_ID 2
@@ -48,9 +53,9 @@
 
 /* Estrutura de um comando*/
 typedef struct{
-	int operacao;
-	int idConta;
-	int valor;
+        int operacao;
+        int idConta;
+        int valor;
     int idContaDestino;
         
 } comando_t;
@@ -67,6 +72,7 @@ pthread_t tid[NUM_TRABALHADORAS];
 sem_t semLeitura,semEscrita;
 pthread_mutex_t bufferReadMutex,cmdsMutex;
 pthread_cond_t podeSimular;
+FILE *f;
 
 
 /*
@@ -90,7 +96,8 @@ void initCond();
 void waitPodeSimular();
 void signalPodeSimular();
 
-void log_command(char* command_name, long tid);
+void open_log(char* command_name, int tid);
+
 
 int main (int argc, char** argv) {
 
@@ -98,15 +105,15 @@ int main (int argc, char** argv) {
   char buffer[BUFFER_SIZE];
   int nProcessos=0; /* guarda o numero de processos já criados*/
 
-	inicializarContas();
-	inicializarTarefas();
-	sinalRecebido=0;
+        inicializarContas();
+        inicializarTarefas();
+        sinalRecebido=0;
 
-	/*cria vector para tratamento do sinal SIGUSR1*/
-	if(signal(SIGUSR1,apanhaUSR1)==SIG_ERR){
-		perror("ERRO ao criar tratamento de sinal");
-		exit(EXIT_SUCCESS);
-	}
+        /*cria vector para tratamento do sinal SIGUSR1*/
+        if(signal(SIGUSR1,apanhaUSR1)==SIG_ERR){
+                perror("ERRO ao criar tratamento de sinal");
+                exit(EXIT_SUCCESS);
+        }
 
   printf("Bem-vinda/o ao i-banco\n\n");
 
@@ -123,46 +130,46 @@ int main (int argc, char** argv) {
         if(numargs>1 && strcmp(args[1], ARGUMENTO_AGORA) == 0){
           if (kill(0,SIGUSR1)<0){
             printf("%s %s: ERRO\n",COMANDO_SAIR,ARGUMENTO_AGORA);
-						exit(EXIT_FAILURE);
-					}
+                                                exit(EXIT_FAILURE);
+                                        }
         }
       printf("i-banco vai terminar.\n");
       printf("--\n");
 
-			/*Terminates all threads*/
-			for(i=0;i<NUM_TRABALHADORAS;i++)
-				adicionarComando(COMANDO_SAIR_ID,0,0,0);
+                        /*Terminates all threads*/
+                        for(i=0;i<NUM_TRABALHADORAS;i++)
+                                adicionarComando(COMANDO_SAIR_ID,0,0,0);
 
-			for(i=0;i<nProcessos;i++){
-				pid=wait(&status);
-				/*error on wait*/
-				if(pid<0){
-					if (errno==EINTR){
-						i--;
-						continue;
-					}
-					perror("Error na funcao wait.\n");
-						exit(EXIT_FAILURE);
-				}
+                        for(i=0;i<nProcessos;i++){
+                                pid=wait(&status);
+                                /*error on wait*/
+                                if(pid<0){
+                                        if (errno==EINTR){
+                                                i--;
+                                                continue;
+                                        }
+                                        perror("Error na funcao wait.\n");
+                                                exit(EXIT_FAILURE);
+                                }
 
-      	if(WIFEXITED(status))
-					printf("FILHO TERMINADO (PID=%d; terminou normalmente)\n",pid);
-				else
-					printf("FILHO TERMINADO (PID=%d; terminou abruptamente)\n",pid);
-			}
+              if(WIFEXITED(status))
+                                        printf("FILHO TERMINADO (PID=%d; terminou normalmente)\n",pid);
+                                else
+                                        printf("FILHO TERMINADO (PID=%d; terminou abruptamente)\n",pid);
+                        }
 
-			/*Confirms all threads are terminated*/
-			for(i=0;i<NUM_TRABALHADORAS;i++)
-				pthread_join(tid[i],NULL);
+                        /*Confirms all threads are terminated*/
+                        for(i=0;i<NUM_TRABALHADORAS;i++)
+                                pthread_join(tid[i],NULL);
 
       printf("--\n");
-			printf("i-banco terminou.\n\n");
+                        printf("i-banco terminou.\n\n");
       exit(EXIT_SUCCESS);
     }
 
-		else if (numargs == 0)
-		/* Nenhum argumento; ignora e volta a pedir */
-		continue;
+                else if (numargs == 0)
+                /* Nenhum argumento; ignora e volta a pedir */
+                continue;
 
         /* Debitar */
         else if (strcmp(args[0], COMANDO_DEBITAR) == 0) {
@@ -175,12 +182,12 @@ int main (int argc, char** argv) {
 
       idConta = atoi(args[1]);
       valor = atoi(args[2]);
-			adicionarComando(COMANDO_DEBITAR_ID,idConta,valor,0);
+                        adicionarComando(COMANDO_DEBITAR_ID,idConta,valor,0);
 
-  	}
+          }
 
-  	/* Creditar */
-  	else if (strcmp(args[0], COMANDO_CREDITAR) == 0) {
+          /* Creditar */
+          else if (strcmp(args[0], COMANDO_CREDITAR) == 0) {
       int idConta, valor;
 
       if (numargs < 3) {
@@ -190,11 +197,11 @@ int main (int argc, char** argv) {
 
       idConta = atoi(args[1]);
       valor = atoi(args[2]);
-			adicionarComando(COMANDO_CREDITAR_ID,idConta,valor,0);
-  	}
+                        adicionarComando(COMANDO_CREDITAR_ID,idConta,valor,0);
+          }
 
-  	/* Ler Saldo */
-  	else if (strcmp(args[0], COMANDO_LER_SALDO) == 0) {
+          /* Ler Saldo */
+          else if (strcmp(args[0], COMANDO_LER_SALDO) == 0) {
       int idConta;
 
       if (numargs < 2) {
@@ -202,11 +209,11 @@ int main (int argc, char** argv) {
         continue;
       }
       idConta = atoi(args[1]);
-			adicionarComando(COMANDO_LER_SALDO_ID,idConta,0,0);
-  	}
-  	
-  	/* Transferir */
-  	else if (strcmp(args[0], COMANDO_TRANSFERIR) == 0) {
+                        adicionarComando(COMANDO_LER_SALDO_ID,idConta,0,0);
+          }
+          
+          /* Transferir */
+          else if (strcmp(args[0], COMANDO_TRANSFERIR) == 0) {
       int idConta, idContaDestino,valor;
 
       if (numargs < 3) {
@@ -219,196 +226,213 @@ int main (int argc, char** argv) {
       valor = atoi(args[3]);
       
       
-			adicionarComando(COMANDO_TRANSFERIR_ID,idConta,valor,idContaDestino);
-  	}
+                        adicionarComando(COMANDO_TRANSFERIR_ID,idConta,valor,idContaDestino);
+          }
 
-  	
-  	/* Simular */
-  	else if (strcmp(args[0], COMANDO_SIMULAR) == 0) {
-			int anos,pid;
+          
+          /* Simular */
+          else if (strcmp(args[0], COMANDO_SIMULAR) == 0) {
+                        int anos,pid;
 
-			if (numargs < 2) {
-				printf("%s: Sintaxe inválida, tente de novo.\n", COMANDO_SIMULAR);
-				continue;
-			}
+                        if (numargs < 2) {
+                                printf("%s: Sintaxe inválida, tente de novo.\n", COMANDO_SIMULAR);
+                                continue;
+                        }
 
-    	anos = atoi(args[1]);
-			/*Teste se existem comandos a executar*/
-			cmdLock();
-			while(num_comandos!=0) waitPodeSimular();
-    	/*Cria o processo*/
-    	pid=fork();
+            anos = atoi(args[1]);
+                        /*Teste se existem comandos a executar*/
+                        cmdLock();
+                        while(num_comandos!=0) waitPodeSimular();
+            /*Cria o processo*/
+            pid=fork();
+        
+        /*se processo nao foi criado*/
       if(pid<0){
-				perror("Não foi possivel criar o processo \n");
+                                perror("Não foi possivel criar o processo \n");
         continue;
       }
+        /*processo criado*/
+        
+                        if (pid==0){
+                /*filho*/
+                            
+                            
+                int fp;
+            
+                /*para nome*/
+                
+                char name[40]; 
+                
+                sprintf(name, "i-banco-sim-%d.txt",getpid());
 
-			if (pid==0){
-				simular(anos);
+                /*-*/
+                
+                fp = open(name,O_CREAT | O_WRONLY,S_IRUSR | S_IWUSR);
+                
+                dup2(fp,1);
+                                
+                                simular(anos);
                 cmdUnlock();
-				exit(EXIT_SUCCESS);
-			}
-			else{
-				nProcessos++;
-				cmdUnlock();
-				continue;
-			}
+                                exit(EXIT_SUCCESS);
+                        }
+                        else{
+                                nProcessos++;
+                                cmdUnlock();
+                                continue;
+                        }
 
     }
 
-		/*Comando desconhecido*/
-  	else{
-    	printf("Comando desconhecido. Tente de novo.\n");
-  	}
-	}
+                /*Comando desconhecido*/
+          else{
+            printf("Comando desconhecido. Tente de novo.\n");
+          }
+        }
 }
 
 void apanhaUSR1(int s){
-	if(signal(SIGUSR1,apanhaUSR1)==SIG_ERR){
-		perror("ERRO ao criar tratamento de sinal");
-		exit(EXIT_SUCCESS);
-	}
-	sinalRecebido=1;
+        if(signal(SIGUSR1,apanhaUSR1)==SIG_ERR){
+                perror("ERRO ao criar tratamento de sinal");
+                exit(EXIT_SUCCESS);
+        }
+        sinalRecebido=1;
 }
 
 void inicializarTarefas(){
-	int i=0,pthread;
+        int i=0,pthread;
 
     initMutexRead();
     cmdInit();
-	initSemRead();
-	initSemWrite();
-	initCond();
+        initSemRead();
+        initSemWrite();
+        initCond();
 
-	for(i=0;i<NUM_TRABALHADORAS;i++){
-		pthread=pthread_create(&tid[i],0,trabalhadora,NULL);
-		if(pthread!=0){
-			fprintf(stderr,"Erro ao criar thread\n");
-			exit(EXIT_FAILURE);
-		}
-	}
+        for(i=0;i<NUM_TRABALHADORAS;i++){
+                pthread=pthread_create(&tid[i],0,trabalhadora,NULL);
+                if(pthread!=0){
+                        fprintf(stderr,"Erro ao criar thread\n");
+                        exit(EXIT_FAILURE);
+                }
+        }
 }
 
 
 
-void log_command(char* command_name, long tid){
+void open_log(char* command_name, int tid){
    
-    FILE *f = fopen("log.txt", "a");
+    f = fopen(LOG_FILE, "w");
     
     /*error*/
-if (f == NULL){
-    perror("Erro ao abrir o log.\n");
-    exit(1);
-}
-fprintf(f,"%ld: %s\n", tid,command_name);
+    if (f == NULL){
+        perror("Erro ao abrir o log.\n");
+        exit(1);
+    }
 
-
-fclose(f);
 }
 
 void *trabalhadora(){
-	comando_t cmd;
+        comando_t cmd;
         
         pthread_t tid;
         tid = pthread_self();
         
         
-	while(1){
-		SemWait(&semLeitura);
-		ReadLock();
+        while(1){
+                SemWait(&semLeitura);
+                ReadLock();
 
-		cmd=cmd_buffer[buff_read_idx];
-		buff_read_idx=(buff_read_idx+1)%CMD_BUFFER_DIM;
+                cmd=cmd_buffer[buff_read_idx];
+                buff_read_idx=(buff_read_idx+1)%CMD_BUFFER_DIM;
 
-		ReadUnlock();
-		SemPost(&semEscrita);
+                ReadUnlock();
+                SemPost(&semEscrita);
 
-		/*Debitar*/
-		if(cmd.operacao==COMANDO_DEBITAR_ID){
-			if (debitar (cmd.idConta, cmd.valor) < 0)
-				printf("%s(%d, %d): Erro\n\n", COMANDO_DEBITAR, cmd.idConta, cmd.valor);
+                /*Debitar*/
+                if(cmd.operacao==COMANDO_DEBITAR_ID){
+                        if (debitar (cmd.idConta, cmd.valor) < 0)
+                                printf("%s(%d, %d): Erro\n\n", COMANDO_DEBITAR, cmd.idConta, cmd.valor);
                                
                                 
-			else{
-				printf("%s(%d, %d): OK\n\n", COMANDO_DEBITAR, cmd.idConta, cmd.valor);
+                        else{
+                                printf("%s(%d, %d): OK\n\n", COMANDO_DEBITAR, cmd.idConta, cmd.valor);
                                 
                             /* foi consumida*/
                                 
                                 
-                                log_command(COMANDO_DEBITAR,tid);
+                                open_log(COMANDO_DEBITAR,tid);
                         }
                 }
 
-		/*Creditar*/
-		else if(cmd.operacao==COMANDO_CREDITAR_ID){
-			if (creditar (cmd.idConta, cmd.valor) < 0)
-				printf("%s(%d, %d): Erro\n\n", COMANDO_CREDITAR, cmd.idConta, cmd.valor);
-			else{
-				printf("%s(%d, %d): OK\n\n", COMANDO_CREDITAR, cmd.idConta, cmd.valor);
+                /*Creditar*/
+                else if(cmd.operacao==COMANDO_CREDITAR_ID){
+                        if (creditar (cmd.idConta, cmd.valor) < 0)
+                                printf("%s(%d, %d): Erro\n\n", COMANDO_CREDITAR, cmd.idConta, cmd.valor);
+                        else{
+                                printf("%s(%d, %d): OK\n\n", COMANDO_CREDITAR, cmd.idConta, cmd.valor);
                             
                             /* foi consumida*/
                                
                                 
-                                log_command(COMANDO_CREDITAR,tid);
+                                open_log(COMANDO_CREDITAR,tid);
                         }
-		}
-		
-		/*Transferir*/
-		else if(cmd.operacao==COMANDO_TRANSFERIR_ID){
-			if (transferir (cmd.idConta, cmd.valor, cmd.idContaDestino) < 0)
-				printf("Erro ao %s %d da conta %d para a conta %d\n\n", COMANDO_TRANSFERIR, cmd.valor, cmd.idConta, cmd.idContaDestino );
-			else{
-				printf("%s(%d, %d, %d): OK\n\n", COMANDO_TRANSFERIR, cmd.idConta, cmd.idContaDestino, cmd.valor);
+                }
+                
+                /*Transferir*/
+                else if(cmd.operacao==COMANDO_TRANSFERIR_ID){
+                        if (transferir (cmd.idConta, cmd.valor, cmd.idContaDestino) < 0)
+                                printf("Erro ao %s %d da conta %d para a conta %d\n\n", COMANDO_TRANSFERIR, cmd.valor, cmd.idConta, cmd.idContaDestino );
+                        else{
+                                printf("%s(%d, %d, %d): OK\n\n", COMANDO_TRANSFERIR, cmd.idConta, cmd.idContaDestino, cmd.valor);
                                 
                             /* foi consumida*/
                                
                                 
-                                log_command(COMANDO_TRANSFERIR,tid);
+                                open_log(COMANDO_TRANSFERIR,tid);
                         }
-		}
-		
-		
-		/*Ler Saldo*/
-		else if(cmd.operacao==COMANDO_LER_SALDO_ID){
-			int saldo;
-			saldo = lerSaldo (cmd.idConta);
+                }
+                
+                
+                /*Ler Saldo*/
+                else if(cmd.operacao==COMANDO_LER_SALDO_ID){
+                        int saldo;
+                        saldo = lerSaldo (cmd.idConta);
 
-			if (saldo < 0)
-				printf("%s(%d): Erro.\n\n", COMANDO_LER_SALDO, cmd.idConta);
-			else{
-				printf("%s(%d): O saldo da conta é %d.\n\n", COMANDO_LER_SALDO, cmd.idConta, saldo);
+                        if (saldo < 0)
+                                printf("%s(%d): Erro.\n\n", COMANDO_LER_SALDO, cmd.idConta);
+                        else{
+                                printf("%s(%d): O saldo da conta é %d.\n\n", COMANDO_LER_SALDO, cmd.idConta, saldo);
                                 
                             /* foi consumida*/
                                
                                 
-                                log_command(COMANDO_TRANSFERIR,tid);
+                                open_log(COMANDO_TRANSFERIR,tid);
                         }
-		}
-		/*Sair*/
-		else if(cmd.operacao==COMANDO_SAIR_ID){
-			pthread_exit(0);
-		}
-		/*Decrementa o número de comandos a executar e sinaliza que é possivel simular*/
-		cmdLock();
-		if(--num_comandos==0){
-			signalPodeSimular();
-		}
-		cmdUnlock();
-	}
+                }
+                /*Sair*/
+                else if(cmd.operacao==COMANDO_SAIR_ID){
+                        pthread_exit(0);
+                }
+                /*Decrementa o número de comandos a executar e sinaliza que é possivel simular*/
+                cmdLock();
+                if(--num_comandos==0){
+                        signalPodeSimular();
+                }
+                cmdUnlock();
+        }
 }
 
 void adicionarComando(int Comando, int idConta, int valor, int idContaDestino){
-	SemWait(&semEscrita);
+        SemWait(&semEscrita);
 
-	cmd_buffer[buff_write_idx].operacao=(Comando);
-	cmd_buffer[buff_write_idx].idConta=(idConta);
-	cmd_buffer[buff_write_idx].valor=(valor);
+        cmd_buffer[buff_write_idx].operacao=(Comando);
+        cmd_buffer[buff_write_idx].idConta=(idConta);
+        cmd_buffer[buff_write_idx].valor=(valor);
     cmd_buffer[buff_write_idx].idContaDestino=(idContaDestino);
-	buff_write_idx=(buff_write_idx+1)%CMD_BUFFER_DIM;
-	cmdLock();
-	num_comandos++;
-	cmdUnlock();
-	SemPost(&semLeitura);
+        buff_write_idx=(buff_write_idx+1)%CMD_BUFFER_DIM;
+        cmdLock();
+        num_comandos++;
+        cmdUnlock();
+        SemPost(&semLeitura);
 }
 
 /*functions*/
@@ -516,3 +540,5 @@ void adicionarComando(int Comando, int idConta, int valor, int idContaDestino){
                     exit(EXIT_FAILURE);
             }
     }
+
+
