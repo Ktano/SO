@@ -46,6 +46,7 @@
 
 #define MAXARGS 4
 #define BUFFER_SIZE 100
+#define MAX_SIMULAR_NAME 40
 
 #define NUM_TRABALHADORAS 3
 #define CMD_BUFFER_DIM (NUM_TRABALHADORAS * 2)
@@ -264,39 +265,38 @@ int main (int argc, char** argv) {
             pid=fork();
         
         /*se processo nao foi criado*/
-      if(pid<0){
-                                perror("Não foi possivel criar o processo \n");
-        continue;
-      }
+            if(pid<0){
+                perror("Não foi possivel criar o processo \n");
+                continue;
+            }
         /*processo criado*/
         
-                        if (pid==0){
+            if (pid==0){
                 /*filho*/
-                            
-                            
                 int fp;
             
-                /*para nome*/
+                /*Variável para nome do ficheiro para*/
+                char name[MAX_SIMULAR_NAME]; 
                 
-                char name[40]; 
-                
-                sprintf(name, "i-banco-sim-%d.txt",getpid());
+                snprintf(name,MAX_SIMULAR_NAME, "i-banco-sim-%d.txt",getpid());
 
-                /*-*/
+                /*Starts by closing the previous file*/
+                //fclose(f);
                 
                 fp = open(name,O_CREAT | O_WRONLY,S_IRUSR | S_IWUSR);
                 
                 dup2(fp,1);
                                 
-                                simular(anos);
+                simular(anos);
                 cmdUnlock();
-                                exit(EXIT_SUCCESS);
-                        }
-                        else{
-                                nProcessos++;
-                                cmdUnlock();
-                                continue;
-                        }
+                close(fp);
+                exit(EXIT_SUCCESS);
+            }
+            else{
+                nProcessos++;
+                cmdUnlock();
+                continue;
+            }
 
     }
 
@@ -306,6 +306,7 @@ int main (int argc, char** argv) {
           }
         }
 }
+
 
 void apanhaUSR1(int s){
         if(signal(SIGUSR1,apanhaUSR1)==SIG_ERR){
@@ -471,7 +472,7 @@ void adicionarComando(int Comando, int idConta, int valor, int idContaDestino){
         cmd_buffer[buff_write_idx].operacao=(Comando);
         cmd_buffer[buff_write_idx].idConta=(idConta);
         cmd_buffer[buff_write_idx].valor=(valor);
-    cmd_buffer[buff_write_idx].idContaDestino=(idContaDestino);
+        cmd_buffer[buff_write_idx].idContaDestino=(idContaDestino);
         buff_write_idx=(buff_write_idx+1)%CMD_BUFFER_DIM;
         cmdLock();
         num_comandos++;

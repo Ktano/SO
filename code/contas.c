@@ -8,7 +8,6 @@
 #include <pthread.h>
 
 #define atrasar() sleep(ATRASO)
-#define valorCreditar(A) (lerSaldo(A)*(TAXAJURO)-CUSTOMANUTENCAO)
 
 int contasSaldos[NUM_CONTAS];
 pthread_mutex_t MutexConta[NUM_CONTAS];
@@ -95,7 +94,7 @@ if (!contaExiste(idConta) || !contaExiste(idConta2))
     return -1;
     
   
-                /*Correcao de ordem*/
+  /*Correcao de ordem*/
   /*Caso de idContaDestino < idConta (de origem)*/
   if (idContaDestino < idConta){
       idConta1 = idContaDestino;
@@ -111,7 +110,7 @@ if (!contaExiste(idConta) || !contaExiste(idConta2))
     /*por ordem*/
     unlockConta(idConta1);
     unlockConta(idConta2);
-	return -1;
+    return -1;
   }
 
   
@@ -149,27 +148,23 @@ int lerSaldo(int idConta) {
 
 
 void simular(int numAnos) {
-	int ano,idConta;
-		for (ano=0; ano<=numAnos;ano++){
-			printf("SIMULACAO: Ano %d\n",(ano));
-			printf("=================\n");
-			for (idConta=1; idConta <= NUM_CONTAS;idConta++){
-				
-                                
-                                int vCreditar;
-				printf("Conta %d, Saldo %d\n",idConta,lerSaldo(idConta));
-				vCreditar = valorCreditar(idConta);
-				if (vCreditar>0)
-					creditar(idConta,vCreditar); /*credita o valor na conta para obter o novo saldo*/
-				else					    
-					debitar(idConta,  ( ( lerSaldo(idConta)>=abs(vCreditar) ) ?  abs(vCreditar):lerSaldo(idConta)));
-			}
-			printf("\n");	
-			if (sinalRecebido!=0){
-				printf("Simulacao Terminada por Signal\n");
-				exit(EXIT_SUCCESS);
-			}
-		}
+	int ano,idConta, saldo;
+        for (ano=0; ano<=numAnos;ano++){
+            printf("SIMULACAO: Ano %d\n",(ano));
+            printf("=================\n");
+            for (idConta=1; idConta <= NUM_CONTAS;idConta++){
+                saldo = lerSaldo(idConta);
+                printf("Conta %d, Saldo %d\n",idConta,saldo);
+                creditar(idConta, saldo * TAXAJURO);
+                saldo = lerSaldo(idConta);
+                debitar(idConta, (CUSTOMANUTENCAO > saldo) ? saldo : CUSTOMANUTENCAO);
+            }
+            printf("\n");	
+            if (sinalRecebido!=0){
+                printf("Simulacao Terminada por Signal\n");
+                exit(EXIT_SUCCESS);
+            }
+        }
 }
 
 
