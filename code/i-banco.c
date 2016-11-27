@@ -354,11 +354,19 @@ void close_log(){
     fclose(f);
 }
 
-void add_on_log(char* command_name, long tid){
-    fprintf(f,"%ld: %s\n", tid,command_name);
+void add_on_log1(char* command_name, long tid, int idConta){
+    fprintf(f,"%ld: %s(%d)\n", tid,command_name,idConta);
 }
 
+void add_on_log2(char* command_name, long tid, int idConta, int valor){
+    fprintf(f,"%ld: %s(%d,%d)\n", tid,command_name,idConta,valor);
+}
 
+ void add_on_log3(char* command_name,long tid, int idConta, int idContaDestino, int valor){
+    fprintf(f,"%ld: %s(%d,%d,%d)\n", tid,command_name,idConta,idContaDestino,valor);
+}
+
+     	 
 
 
     /*trabalhadora*/
@@ -392,7 +400,8 @@ void *trabalhadora(){
                             /* foi consumida*/
                                 
                                 
-                                add_on_log(COMANDO_DEBITAR,tid);
+                                /*2 args*/
+                                add_on_log2(COMANDO_DEBITAR,tid, cmd.idConta, cmd.valor);
                         }
                 }
 
@@ -406,7 +415,8 @@ void *trabalhadora(){
                             /* foi consumida*/
                                
                                 
-                                add_on_log(COMANDO_CREDITAR,tid);
+                                /*2 args*/
+                                add_on_log2(COMANDO_CREDITAR,tid, cmd.idConta, cmd.valor);
                         }
                 }
                 
@@ -419,8 +429,8 @@ void *trabalhadora(){
                                 
                             /* foi consumida*/
                                
-                                
-                                add_on_log(COMANDO_TRANSFERIR,tid);
+                                /*3 args*/
+                                add_on_log3(COMANDO_TRANSFERIR,tid, cmd.idConta, cmd.idContaDestino, cmd.valor);
                         }
                 }
                 
@@ -438,7 +448,8 @@ void *trabalhadora(){
                             /* foi consumida*/
                                
                                 
-                                add_on_log(COMANDO_LER_SALDO,tid);
+                                /* 1 args*/
+                                add_on_log1(COMANDO_LER_SALDO,tid, cmd.idConta);
                         }
                 }
                 /*Sair*/
