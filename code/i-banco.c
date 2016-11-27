@@ -96,7 +96,9 @@ void initCond();
 void waitPodeSimular();
 void signalPodeSimular();
 
-void open_log(char* command_name, int tid);
+void open_log();
+void close_log();
+void add_on_log(char* command_name, long tid);
 
 
 int main (int argc, char** argv) {
@@ -117,42 +119,52 @@ int main (int argc, char** argv) {
 
   printf("Bem-vinda/o ao i-banco\n\n");
 
+  
+  open_log();
   while (1) {
     int numargs;
-
+    
     numargs = readLineArguments(args, MAXARGS+1, buffer, BUFFER_SIZE);
 
-    /* EOF (end of file) do stdin ou comando "sair" */
+
+    
+    /* Comando sair (ou EOF (end of file) do stdin )*/
+    
     if (numargs < 0 ||
       (numargs > 0 && (strcmp(args[0], COMANDO_SAIR) == 0))) {
-        int i, pid,status;
+                
+            int i, pid,status;
+            
+            /*se for para sair agora (manda signal)*/    
+                if(numargs>1 && strcmp(args[1], ARGUMENTO_AGORA) == 0){
+                    if (kill(0,SIGUSR1)<0){
+                        printf("%s %s: ERRO\n",COMANDO_SAIR,ARGUMENTO_AGORA);
+                                                            exit(EXIT_FAILURE);
+                                                    }
+                }
+                
+                
+                
+            printf("i-banco vai terminar.\n");
+            printf("--\n");
 
-        if(numargs>1 && strcmp(args[1], ARGUMENTO_AGORA) == 0){
-          if (kill(0,SIGUSR1)<0){
-            printf("%s %s: ERRO\n",COMANDO_SAIR,ARGUMENTO_AGORA);
-                                                exit(EXIT_FAILURE);
-                                        }
-        }
-      printf("i-banco vai terminar.\n");
-      printf("--\n");
+            /*Terminates all threads*/
+            for(i=0;i<NUM_TRABALHADORAS;i++)
+                    adicionarComando(COMANDO_SAIR_ID,0,0,0);
 
-                        /*Terminates all threads*/
-                        for(i=0;i<NUM_TRABALHADORAS;i++)
-                                adicionarComando(COMANDO_SAIR_ID,0,0,0);
+            for(i=0;i<nProcessos;i++){
+                    pid=wait(&status);
+                    /*error on wait*/
+                    if(pid<0){
+                            if (errno==EINTR){
+                                    i--;
+                                    continue;
+                            }
+                            perror("Error na funcao wait.\n");
+                                    exit(EXIT_FAILURE);
+                    }
 
-                        for(i=0;i<nProcessos;i++){
-                                pid=wait(&status);
-                                /*error on wait*/
-                                if(pid<0){
-                                        if (errno==EINTR){
-                                                i--;
-                                                continue;
-                                        }
-                                        perror("Error na funcao wait.\n");
-                                                exit(EXIT_FAILURE);
-                                }
-
-              if(WIFEXITED(status))
+            if(WIFEXITED(status))
                                         printf("FILHO TERMINADO (PID=%d; terminou normalmente)\n",pid);
                                 else
                                         printf("FILHO TERMINADO (PID=%d; terminou abruptamente)\n",pid);
@@ -160,18 +172,23 @@ int main (int argc, char** argv) {
 
                         /*Confirms all threads are terminated*/
                         for(i=0;i<NUM_TRABALHADORAS;i++)
-                                pthread_join(tid[i],NULL);
+                            pthread_join(tid[i],NULL);
+                        
 
-      printf("--\n");
-                        printf("i-banco terminou.\n\n");
-      exit(EXIT_SUCCESS);
+            printf("--\n");
+            printf("i-banco terminou.\n\n");
+            close_log();
+            exit(EXIT_SUCCESS);
     }
+    else if (numargs == 0)
+    /* Nenhum argumento; ignora e volta a pedir */
+    continue;
 
-                else if (numargs == 0)
-                /* Nenhum argumento; ignora e volta a pedir */
-                continue;
-
-        /* Debitar */
+                
+   
+    
+    
+    /* Debitar */
         else if (strcmp(args[0], COMANDO_DEBITAR) == 0) {
       int idConta, valor;
 
@@ -318,17 +335,33 @@ void inicializarTarefas(){
 
 
 
-void open_log(char* command_name, int tid){
+ 
+    /*log*/
+
+void open_log(){
    
     f = fopen(LOG_FILE, "w");
     
-    /*error*/
+    
     if (f == NULL){
         perror("Erro ao abrir o log.\n");
         exit(1);
     }
-
+    
 }
+
+void close_log(){
+    fclose(f);
+}
+
+void add_on_log(char* command_name, long tid){
+    fprintf(f,"%ld: %s\n", tid,command_name);
+}
+
+
+
+
+    /*trabalhadora*/
 
 void *trabalhadora(){
         comando_t cmd;
@@ -359,7 +392,7 @@ void *trabalhadora(){
                             /* foi consumida*/
                                 
                                 
-                                open_log(COMANDO_DEBITAR,tid);
+                                add_on_log(COMANDO_DEBITAR,tid);
                         }
                 }
 
@@ -373,7 +406,7 @@ void *trabalhadora(){
                             /* foi consumida*/
                                
                                 
-                                open_log(COMANDO_CREDITAR,tid);
+                                add_on_log(COMANDO_CREDITAR,tid);
                         }
                 }
                 
@@ -387,7 +420,7 @@ void *trabalhadora(){
                             /* foi consumida*/
                                
                                 
-                                open_log(COMANDO_TRANSFERIR,tid);
+                                add_on_log(COMANDO_TRANSFERIR,tid);
                         }
                 }
                 
@@ -405,7 +438,7 @@ void *trabalhadora(){
                             /* foi consumida*/
                                
                                 
-                                open_log(COMANDO_TRANSFERIR,tid);
+                                add_on_log(COMANDO_LER_SALDO,tid);
                         }
                 }
                 /*Sair*/
