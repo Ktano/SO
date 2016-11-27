@@ -290,7 +290,10 @@ int main (int argc, char** argv) {
                 dup2(fp,1);
                 simular(anos);
                 cmdUnlock();
-                close(fp);
+                if(close(fp)<0){
+                    perror("erro ao fechar o ficheiro");
+                    exit(EXIT_SUCCESS);
+                }
                 exit(EXIT_SUCCESS);
             }
             else{
