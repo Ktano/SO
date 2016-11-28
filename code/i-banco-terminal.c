@@ -44,7 +44,11 @@ void adicionarComando(int Comando, int idConta, int valor, int idContaDestino);
 int main (int argc, char** argv) {
   char *args[MAXARGS + 1];
   char buffer[BUFFER_SIZE];
-
+  
+  if(argc>1){
+    openPipeEscrita(argv[1]);
+  }
+  
   printf("Bem-vinda/o ao i-banco\n\n");
 
   while (1) {
@@ -60,7 +64,7 @@ int main (int argc, char** argv) {
       (numargs > 0 && (strcmp(args[0], COMANDO_SAIR_TERMINAL) == 0))) {
                       
         
-      printf("i-banco vai terminar.\n");
+      printf("i-banco-terminal vai terminar.\n");
       printf("--\n");
       printf("--\n");
       printf("i-banco-terminal terminou.\n\n");
@@ -172,4 +176,11 @@ void adicionarComando(int Comando, int idConta, int valor, int idContaDestino){
   /*escreve o comando para o pipe*/
   write(pipeEscrita,&cmd,sizeof(comando_t));
 
+}
+
+void openPipeEscrita(char* file){
+  if((pipeEscrita=open(file,O_WRONLY))<0){
+    perror("não foi possivel abrir o ficheiro");
+    exit(EXIT_SUCCESS);
+  }
 }

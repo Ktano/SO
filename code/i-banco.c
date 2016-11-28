@@ -101,20 +101,20 @@ int main (int argc, char** argv) {
   char buffer[BUFFER_SIZE];
   int nProcessos=0; /* guarda o numero de processos já criados*/
 
-        inicializarContas();
-        inicializarTarefas();
-        sinalRecebido=0;
+  inicializarContas();
+  inicializarTarefas();
+  sinalRecebido=0;
 
-        /*cria vector para tratamento do sinal SIGUSR1*/
-        if(signal(SIGUSR1,apanhaUSR1)==SIG_ERR){
-                perror("ERRO ao criar tratamento de sinal");
-                exit(EXIT_SUCCESS);
-        }
+  /*cria vector para tratamento do sinal SIGUSR1*/
+  if(signal(SIGUSR1,apanhaUSR1)==SIG_ERR){
+    perror("ERRO ao criar tratamento de sinal");
+    exit(EXIT_SUCCESS);
+  }
 
   printf("Bem-vinda/o ao i-banco\n\n");
 
-  
   open_log();
+  
   while (1) {
     int numargs;
     
