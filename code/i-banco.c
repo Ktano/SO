@@ -27,13 +27,6 @@
 
 
 
-#define COMANDO_DEBITAR "debitar"
-#define COMANDO_CREDITAR "creditar"
-#define COMANDO_TRANSFERIR "transferir"
-#define COMANDO_LER_SALDO "lerSaldo"
-#define COMANDO_SIMULAR "simular"
-#define COMANDO_SAIR "sair"
-#define ARGUMENTO_AGORA "agora"
 
 #define LOG_FILE "log.txt"
 
@@ -44,8 +37,7 @@
 #define COMANDO_SIMULAR_ID 4
 #define COMANDO_SAIR_ID 5
 
-#define MAXARGS 4
-#define BUFFER_SIZE 100
+
 #define MAX_SIMULAR_NAME 40
 
 #define NUM_TRABALHADORAS 3
@@ -54,9 +46,10 @@
 
 /* Estrutura de um comando*/
 typedef struct{
-        int operacao;
-        int idConta;
-        int valor;
+    int PID;
+    int operacao;
+    int idConta;
+    int valor;
     int idContaDestino;
         
 } comando_t;
@@ -67,8 +60,8 @@ typedef struct{
 */
 comando_t cmd_buffer[CMD_BUFFER_DIM];
 int buff_write_idx = 0,
- buff_read_idx = 0,
- num_comandos=0;
+buff_read_idx = 0,
+num_comandos=0;
 pthread_t tid[NUM_TRABALHADORAS];
 sem_t semLeitura,semEscrita;
 pthread_mutex_t bufferReadMutex,cmdsMutex;
@@ -82,7 +75,7 @@ int logFile;
 void apanhaUSR1(int s);
 void inicializarTarefas();
 void *trabalhadora();
-void adicionarComando(int Comando, int idConta, int valor,int idContaDestino);
+void adicionarComando(comando_t cmd);
 void initSemRead();
 void initSemWrite();
 void SemPost(sem_t* sem);
@@ -447,13 +440,9 @@ void *trabalhadora(){
         }
 }
 
-void adicionarComando(int Comando, int idConta, int valor, int idContaDestino){
+void adicionarComando(comando_t cmd){
         SemWait(&semEscrita);
-
-        cmd_buffer[buff_write_idx].operacao=(Comando);
-        cmd_buffer[buff_write_idx].idConta=(idConta);
-        cmd_buffer[buff_write_idx].valor=(valor);
-        cmd_buffer[buff_write_idx].idContaDestino=(idContaDestino);
+        cmd_buffer[buff_write_idx]=cmd;
         buff_write_idx=(buff_write_idx+1)%CMD_BUFFER_DIM;
         cmdLock();
         num_comandos++;
@@ -463,104 +452,104 @@ void adicionarComando(int Comando, int idConta, int valor, int idContaDestino){
 
 /*functions*/
 
-    /*semaforo functions*/
+/*semaforo functions*/
 
-    void initSemRead(){
+void initSemRead(){
 
-        if(sem_init(&semLeitura,0,0)==-1){
-            perror("Erro ao criar o semaforo de leitura");
-            exit(EXIT_FAILURE);
+    if(sem_init(&semLeitura,0,0)==-1){
+        perror("Erro ao criar o semaforo de leitura");
+        exit(EXIT_FAILURE);
+    }
+
+}
+
+void initSemWrite(){
+
+    if(sem_init(&semEscrita,0,CMD_BUFFER_DIM)==-1){
+        perror("Erro ao criar o semaforo de leitura");
+        exit(EXIT_FAILURE);
+    }
+
+}
+
+void SemPost(sem_t* sem){
+
+    if(sem_post(sem)==-1){
+        perror("Erro ao fazer post no semaforo");
+        exit(EXIT_FAILURE);
+    }
+
+
+}
+
+void SemWait(sem_t* sem){
+
+    if(sem_wait(sem)==-1){
+        perror("Erro ao fazer post no semaforo");
+        exit(EXIT_FAILURE);
+    }
+
+
+}
+
+/*mutex functions*/
+
+void initMutexRead(){
+        pthread_mutex_init(&bufferReadMutex,NULL);
+}
+
+void ReadLock(){
+        if(pthread_mutex_lock(&bufferReadMutex)!=0){
+        fprintf(stderr,"Erro ao criar o Mutex");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void ReadUnlock(){
+        if(pthread_mutex_unlock(&bufferReadMutex)!=0){
+        fprintf(stderr,"Error creating Mutex");
+        exit(EXIT_FAILURE);
+    }
+}
+
+
+/*simular functions*/
+
+void initCond(){
+        if (pthread_cond_init(&podeSimular,NULL)!=0){
+                fprintf(stderr,"Erro ao criar a condição");
+                exit(EXIT_FAILURE);
         }
+}
 
-    }
+void cmdInit(){
+    pthread_mutex_init(&cmdsMutex,NULL);
+    
+}
 
-    void initSemWrite(){
-
-        if(sem_init(&semEscrita,0,CMD_BUFFER_DIM)==-1){
-            perror("Erro ao criar o semaforo de leitura");
-            exit(EXIT_FAILURE);
-        }
-
-    }
-
-    void SemPost(sem_t* sem){
-
-        if(sem_post(sem)==-1){
-            perror("Erro ao fazer post no semaforo");
-            exit(EXIT_FAILURE);
-        }
-
-
-    }
-
-    void SemWait(sem_t* sem){
-
-        if(sem_wait(sem)==-1){
-            perror("Erro ao fazer post no semaforo");
-            exit(EXIT_FAILURE);
-        }
-
-
-    }
-
-    /*mutex functions*/
-
-    void initMutexRead(){
-            pthread_mutex_init(&bufferReadMutex,NULL);
-    }
-
-    void ReadLock(){
-            if(pthread_mutex_lock(&bufferReadMutex)!=0){
+void cmdLock(){
+            if(pthread_mutex_lock(&cmdsMutex)!=0){
             fprintf(stderr,"Erro ao criar o Mutex");
             exit(EXIT_FAILURE);
         }
     }
 
-    void ReadUnlock(){
-            if(pthread_mutex_unlock(&bufferReadMutex)!=0){
+void cmdUnlock(){
+            if(pthread_mutex_unlock(&cmdsMutex)!=0){
             fprintf(stderr,"Error creating Mutex");
             exit(EXIT_FAILURE);
         }
     }
 
 
-    /*simular functions*/
-
-    void initCond(){
-            if (pthread_cond_init(&podeSimular,NULL)!=0){
-                    fprintf(stderr,"Erro ao criar a condição");
-                    exit(EXIT_FAILURE);
-            }
-    }
-    
-    void cmdInit(){
-        pthread_mutex_init(&cmdsMutex,NULL);
-        
-    }
-    
-    void cmdLock(){
-                if(pthread_mutex_lock(&cmdsMutex)!=0){
-                fprintf(stderr,"Erro ao criar o Mutex");
+void waitPodeSimular(){
+        if(pthread_cond_wait(&podeSimular,&cmdsMutex)!=0){
+                fprintf(stderr,"Erro durante a espera da condição");
                 exit(EXIT_FAILURE);
-            }
         }
-    
-    void cmdUnlock(){
-                if(pthread_mutex_unlock(&cmdsMutex)!=0){
-                fprintf(stderr,"Error creating Mutex");
-                exit(EXIT_FAILURE);
-            }
-        }
+}
 
-
-    void waitPodeSimular(){
-            if(pthread_cond_wait(&podeSimular,&cmdsMutex)!=0){
-                    fprintf(stderr,"Erro durante a espera da condição");
-                    exit(EXIT_FAILURE);
-            }
-    }
-
-    void signalPodeSimular(){
+void signalPodeSimular(){
             if(pthread_cond_signal(&podeSimular)!=0){
                     fprintf(stderr,"Erro durante a espera da condição");
                     exit(EXIT_FAILURE);
