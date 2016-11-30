@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 
 #define COMANDO_DEBITAR "debitar"
@@ -38,8 +40,11 @@ typedef struct{
 int pipeEscrita,
   pipeLeitura;
 
-
+/*prototipos*/
 void adicionarComando(int Comando, int idConta, int valor, int idContaDestino);
+void openPipeEscrita(char* file);
+
+/*main*/
 
 int main (int argc, char** argv) {
   char *args[MAXARGS + 1];
