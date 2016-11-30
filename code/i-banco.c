@@ -150,7 +150,7 @@ int main (int argc, char** argv) {
           
       printf("i-banco vai terminar.\n");
       printf("--\n");
-
+COMANDO_SIMULAR_ID
       /*Terminates all threads*/
       for(i=0;i<NUM_TRABALHADORAS;i++)
         adicionarComando(cmd);
@@ -193,7 +193,7 @@ int main (int argc, char** argv) {
     }
 
     /* Simular */
-    else if (cmd.operacao == 0) {
+    else if (cmd.operacao == COMANDO_SIMULAR_ID) {
       int anos,pid;
 
       anos = cmd.valor;
