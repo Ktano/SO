@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-
+#include <time.h>
 
 #define COMANDO_DEBITAR "debitar"
 #define COMANDO_CREDITAR "creditar"
@@ -53,13 +53,14 @@ int readResult();
 int main (int argc, char** argv) {
   char *args[MAXARGS + 1];
   char buffer[BUFFER_SIZE];
+  time_t startTime;
   
   if(argc>1){
     openPipeEscrita(argv[1]);
   }
     
   makePipe();
-  printf("Bem-vinda/o ao i-banco-terminal\n");
+  printf("Bem-vinda/o ao i-banco-terminal\n\n");
 
   while (1) {
     int numargs;
@@ -97,13 +98,14 @@ int main (int argc, char** argv) {
       idConta = atoi(args[1]);
       valor = atoi(args[2]);
       adicionarComando(COMANDO_DEBITAR_ID,idConta,valor,0);
-      
+      startTime = time(NULL);
       if (readResult () < 0)
         printf("%s(%d, %d): Erro\n\n", COMANDO_DEBITAR, idConta, valor);  
       else{
         printf("%s(%d, %d): OK\n\n", COMANDO_DEBITAR, idConta, valor);
         /* foi consumida*/
       }
+      printf("Tempo de execucao:%f segundos\n\n", difftime(time(NULL),startTime));
 
     }
 
@@ -119,13 +121,14 @@ int main (int argc, char** argv) {
       idConta = atoi(args[1]);
       valor = atoi(args[2]);
       adicionarComando(COMANDO_CREDITAR_ID,idConta,valor,0);
-      
+      startTime = time(NULL);
       if (readResult() < 0)
         printf("%s(%d, %d): Erro\n\n", COMANDO_CREDITAR, idConta, valor);
       else{
         printf("%s(%d, %d): OK\n\n", COMANDO_CREDITAR, idConta, valor);
         /* foi consumida*/
       }
+      printf("Tempo de execucao:%f segundos\n\n", difftime(time(NULL),startTime));
     }
 
     /* Ler Saldo */
@@ -138,7 +141,7 @@ int main (int argc, char** argv) {
       }
       idConta = atoi(args[1]);
       adicionarComando(COMANDO_LER_SALDO_ID,idConta,0,0);
-        printf ("test");
+      startTime = time(NULL);
       saldo = readResult ();
 
       if (saldo < 0)
@@ -147,8 +150,8 @@ int main (int argc, char** argv) {
         printf("%s(%d): O saldo da conta é %d.\n\n", COMANDO_LER_SALDO, idConta, saldo);
         
         /* foi consumida*/
-              
       }
+      printf("Tempo de execucao:%f segundos\n\n", difftime(time(NULL),startTime));
     }
   
     /* Transferir */
@@ -165,12 +168,14 @@ int main (int argc, char** argv) {
       valor = atoi(args[3]);
   
       adicionarComando(COMANDO_TRANSFERIR_ID,idConta,valor,idContaDestino);
+      startTime = time(NULL);
       if (readResult () < 0)
         printf("Erro ao %s %d da conta %d para a conta %d\n\n", COMANDO_TRANSFERIR, valor, idConta, idContaDestino );
       else{
         printf("%s(%d, %d, %d): OK\n\n", COMANDO_TRANSFERIR, idConta, idContaDestino, valor);
         /* foi consumida*/
       }
+      printf("Tempo de execucao:%f segundos\n\n", difftime(time(NULL),time(NULL)));
     }
   
     /* Simular */

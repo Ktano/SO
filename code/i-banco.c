@@ -319,13 +319,11 @@ void *trabalhadora(){
 
     /*Debitar*/
     if(cmd.operacao==COMANDO_DEBITAR_ID){
-      printf("test");
       writeResult(debitar (cmd.idConta, cmd.valor),cmd.pipeName);
     }
 
     /*Creditar*/
     else if(cmd.operacao==COMANDO_CREDITAR_ID){
-      printf("test");
       writeResult(creditar (cmd.idConta, cmd.valor),cmd.pipeName);
     }
     
