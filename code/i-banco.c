@@ -50,6 +50,7 @@
 
 
 #define MAX_SIMULAR_NAME 40
+#define MAX_PIPE_NAME 30
 
 #define NUM_TRABALHADORAS 3
 #define CMD_BUFFER_DIM (NUM_TRABALHADORAS * 2)
@@ -57,11 +58,11 @@
 
 /* Estrutura de um comando*/
 typedef struct{
-    int PID;
-    int operacao;
-    int idConta;
-    int valor;
-    int idContaDestino;
+  char pipeName[MAX_PIPE_NAME];
+  int operacao;
+  int idConta;
+  int valor;
+  int idContaDestino;
         
 } comando_t;
 
@@ -105,6 +106,7 @@ void open_log();
 void close_log();
 void makePipe();
 comando_t readCommand();
+void writeResult(int res, char* pipe);
 
 
 /* main*/
@@ -150,7 +152,6 @@ int main (int argc, char** argv) {
           
       printf("i-banco vai terminar.\n");
       printf("--\n");
-COMANDO_SIMULAR_ID
       /*Terminates all threads*/
       for(i=0;i<NUM_TRABALHADORAS;i++)
         adicionarComando(cmd);
@@ -318,48 +319,22 @@ void *trabalhadora(){
 
     /*Debitar*/
     if(cmd.operacao==COMANDO_DEBITAR_ID){
-      if (debitar (cmd.idConta, cmd.valor) < 0)
-        printf("%s(%d, %d): Erro\n\n", COMANDO_DEBITAR, cmd.idConta, cmd.valor);  
-      else{
-        printf("%s(%d, %d): OK\n\n", COMANDO_DEBITAR, cmd.idConta, cmd.valor);
-        /* foi consumida*/
-      }
+      writeResult(debitar (cmd.idConta, cmd.valor),cmd.pipeName);
     }
 
     /*Creditar*/
     else if(cmd.operacao==COMANDO_CREDITAR_ID){
-      if (creditar (cmd.idConta, cmd.valor) < 0)
-        printf("%s(%d, %d): Erro\n\n", COMANDO_CREDITAR, cmd.idConta, cmd.valor);
-      else{
-        printf("%s(%d, %d): OK\n\n", COMANDO_CREDITAR, cmd.idConta, cmd.valor);
-        /* foi consumida*/
-      }
+      writeResult(creditar (cmd.idConta, cmd.valor),cmd.pipeName);
     }
     
     /*Transferir*/
     else if(cmd.operacao==COMANDO_TRANSFERIR_ID){
-      if (transferir (cmd.idConta, cmd.valor, cmd.idContaDestino) < 0)
-        printf("Erro ao %s %d da conta %d para a conta %d\n\n", COMANDO_TRANSFERIR, cmd.valor, cmd.idConta, cmd.idContaDestino );
-      else{
-        printf("%s(%d, %d, %d): OK\n\n", COMANDO_TRANSFERIR, cmd.idConta, cmd.idContaDestino, cmd.valor);
-        /* foi consumida*/
-      }
+      writeResult(transferir(cmd.idConta, cmd.valor, cmd.idContaDestino),cmd.pipeName);
     }
-    
     
     /*Ler Saldo*/
     else if(cmd.operacao==COMANDO_LER_SALDO_ID){
-      int saldo;
-      saldo = lerSaldo (cmd.idConta);
-
-      if (saldo < 0)
-        printf("%s(%d): Erro.\n\n", COMANDO_LER_SALDO, cmd.idConta);
-      else{
-        printf("%s(%d): O saldo da conta é %d.\n\n", COMANDO_LER_SALDO, cmd.idConta, saldo);
-        
-        /* foi consumida*/
-              
-      }
+      writeResult(lerSaldo (cmd.idConta),cmd.pipeName);
     }
     /*Sair*/
     else if(cmd.operacao==COMANDO_SAIR_ID || cmd.operacao==COMANDO_SAIR_AGORA_ID){
@@ -384,7 +359,6 @@ void adicionarComando(comando_t cmd){
         SemPost(&semLeitura);
 }
 
-/*functions*/
 
 /*semaforo functions*/
 
@@ -514,4 +488,11 @@ comando_t readCommand(){
    cmd.operacao=-1; /*retorna uma operacao invalida*/
   }
    return cmd;
+}
+
+void writeResult(int res, char* pipe){
+    int pipeTerminal;
+    pipeTerminal=open(pipe,O_WRONLY);
+    write(pipeTerminal,&res,sizeof(res));
+    close(pipeTerminal);
 }

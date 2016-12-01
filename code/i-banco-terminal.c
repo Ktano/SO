@@ -27,9 +27,10 @@
 
 #define MAXARGS 4
 #define BUFFER_SIZE 100
+#define MAX_PIPE_NAME 30
 
 typedef struct{
-  int PID;
+  char pipeName[MAX_PIPE_NAME];
   int operacao;
   int idConta;
   int valor;
@@ -39,10 +40,12 @@ typedef struct{
 
 int pipeEscrita,
   pipeLeitura;
+char pipeName[MAX_PIPE_NAME];
 
 /*prototipos*/
 void adicionarComando(int Comando, int idConta, int valor, int idContaDestino);
 void openPipeEscrita(char* file);
+int readResult();
 
 /*main*/
 
@@ -54,11 +57,10 @@ int main (int argc, char** argv) {
     openPipeEscrita(argv[1]);
   }
   
-  printf("Bem-vinda/o ao i-banco\n\n");
+  printf("Bem-vinda/o ao i-banco-terminal\n");
 
   while (1) {
     int numargs;
-    
     numargs = readLineArguments(args, MAXARGS+1, buffer, BUFFER_SIZE);
 
 
@@ -93,6 +95,13 @@ int main (int argc, char** argv) {
       idConta = atoi(args[1]);
       valor = atoi(args[2]);
       adicionarComando(COMANDO_DEBITAR_ID,idConta,valor,0);
+      
+      if (readResult () < 0)
+        printf("%s(%d, %d): Erro\n\n", COMANDO_DEBITAR, idConta, valor);  
+      else{
+        printf("%s(%d, %d): OK\n\n", COMANDO_DEBITAR, idConta, valor);
+        /* foi consumida*/
+      }
 
     }
 
@@ -108,11 +117,18 @@ int main (int argc, char** argv) {
       idConta = atoi(args[1]);
       valor = atoi(args[2]);
       adicionarComando(COMANDO_CREDITAR_ID,idConta,valor,0);
+      
+      if (readResult() < 0)
+        printf("%s(%d, %d): Erro\n\n", COMANDO_CREDITAR, idConta, valor);
+      else{
+        printf("%s(%d, %d): OK\n\n", COMANDO_CREDITAR, idConta, valor);
+        /* foi consumida*/
+      }
     }
 
     /* Ler Saldo */
     else if (strcmp(args[0], COMANDO_LER_SALDO) == 0) {
-      int idConta;
+      int idConta,saldo;
 
       if (numargs < 2) {
         printf("%s: Sintaxe inválida, tente de novo.\n", COMANDO_LER_SALDO);
@@ -120,6 +136,17 @@ int main (int argc, char** argv) {
       }
       idConta = atoi(args[1]);
       adicionarComando(COMANDO_LER_SALDO_ID,idConta,0,0);
+
+      saldo = readResult ();
+
+      if (saldo < 0)
+        printf("%s(%d): Erro.\n\n", COMANDO_LER_SALDO, idConta);
+      else{
+        printf("%s(%d): O saldo da conta é %d.\n\n", COMANDO_LER_SALDO, idConta, saldo);
+        
+        /* foi consumida*/
+              
+      }
     }
   
     /* Transferir */
@@ -136,8 +163,13 @@ int main (int argc, char** argv) {
       valor = atoi(args[3]);
   
       adicionarComando(COMANDO_TRANSFERIR_ID,idConta,valor,idContaDestino);
+      if (readResult () < 0)
+        printf("Erro ao %s %d da conta %d para a conta %d\n\n", COMANDO_TRANSFERIR, valor, idConta, idContaDestino );
+      else{
+        printf("%s(%d, %d, %d): OK\n\n", COMANDO_TRANSFERIR, idConta, idContaDestino, valor);
+        /* foi consumida*/
+      }
     }
-
   
     /* Simular */
     else if (strcmp(args[0], COMANDO_SIMULAR) == 0) {
@@ -177,7 +209,7 @@ void adicionarComando(int Comando, int idConta, int valor, int idContaDestino){
   cmd.idConta=(idConta);
   cmd.valor=(valor);
   cmd.idContaDestino=(idContaDestino);
-  cmd.PID=getpid();
+  strcpy(cmd.pipeName,pipeName);
   /*escreve o comando para o pipe*/
   write(pipeEscrita,&cmd,sizeof(comando_t));
 
@@ -188,4 +220,30 @@ void openPipeEscrita(char* file){
     perror("não foi possivel abrir o ficheiro");
     exit(EXIT_SUCCESS);
   }
+}
+
+
+void makePipe(){
+  snprintf(pipeName,MAX_PIPE_NAME,"/tmp/i-banco-terminal%d",getpid());
+    
+  unlink(pipeName);
+  if(mkfifo(pipeName,0777)<0){
+    perror("não foi possivel criar o Pipe");
+    exit(EXIT_SUCCESS);
+  }
+  
+  if((pipeLeitura=open(pipeName,O_RDONLY))<0){
+    perror("não foi possivel abrir o Pipe");
+    exit(EXIT_SUCCESS);
+  }
+  
+}
+
+int readResult(){
+  int res;
+  if(read(pipeLeitura,&res,sizeof(int))<0){
+   perror("Erro ao ler o resultado");
+   res=-1; /*retorna uma operacao invalida*/
+  }
+   return res;
 }
