@@ -45,6 +45,7 @@ char pipeName[MAX_PIPE_NAME];
 /*prototipos*/
 void adicionarComando(int Comando, int idConta, int valor, int idContaDestino);
 void openPipeEscrita(char* file);
+void makePipe();
 int readResult();
 
 /*main*/
@@ -56,7 +57,8 @@ int main (int argc, char** argv) {
   if(argc>1){
     openPipeEscrita(argv[1]);
   }
-  
+    
+  makePipe();
   printf("Bem-vinda/o ao i-banco-terminal\n");
 
   while (1) {
@@ -136,7 +138,7 @@ int main (int argc, char** argv) {
       }
       idConta = atoi(args[1]);
       adicionarComando(COMANDO_LER_SALDO_ID,idConta,0,0);
-
+        printf ("test");
       saldo = readResult ();
 
       if (saldo < 0)
@@ -209,7 +211,7 @@ void adicionarComando(int Comando, int idConta, int valor, int idContaDestino){
   cmd.idConta=(idConta);
   cmd.valor=(valor);
   cmd.idContaDestino=(idContaDestino);
-  strcpy(cmd.pipeName,pipeName);
+  snprintf(cmd.pipeName,MAX_PIPE_NAME,"%s",pipeName);
   /*escreve o comando para o pipe*/
   write(pipeEscrita,&cmd,sizeof(comando_t));
 
@@ -232,18 +234,22 @@ void makePipe(){
     exit(EXIT_SUCCESS);
   }
   
+}
+
+void openPipe(){
   if((pipeLeitura=open(pipeName,O_RDONLY))<0){
     perror("não foi possivel abrir o Pipe");
     exit(EXIT_SUCCESS);
   }
-  
 }
 
 int readResult(){
   int res;
+  openPipe();
   if(read(pipeLeitura,&res,sizeof(int))<0){
    perror("Erro ao ler o resultado");
    res=-1; /*retorna uma operacao invalida*/
   }
    return res;
+   close(pipeLeitura);
 }

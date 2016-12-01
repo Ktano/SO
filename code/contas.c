@@ -97,14 +97,14 @@ return 0;
  * Poe esse valor em dinheiro na conta destino.
  */
 int transferir(int idConta, int valor, int idContaDestino) {
-    int idConta1 , idConta2; 
-    idConta1 = idConta;
-    idConta2 = idContaDestino;
-    atrasar();
+  int idConta1 , idConta2; 
+  idConta1 = idConta;
+  idConta2 = idContaDestino;
+  atrasar();
      
      
-if (!contaExiste(idConta) || !contaExiste(idConta2))
-    return -1;
+  if (!contaExiste(idConta) || !contaExiste(idConta2))
+  return -1;
     
   
   /*Correcao de ordem*/
@@ -131,7 +131,7 @@ if (!contaExiste(idConta) || !contaExiste(idConta2))
   contasSaldos[idContaDestino - 1] += valor;
   
   /*por ordem*/
- if(logFile>0){
+  if(logFile>0){
     char logMessage[MAX_LOG_MESSAGE];
     snprintf(logMessage,MAX_LOG_MESSAGE,"%lu: transferir %d %d %d\n", pthread_self(),idConta,idContaDestino,valor);
     writeLog(logMessage);
@@ -161,7 +161,7 @@ int lerSaldo(int idConta) {
   res = contasSaldos[idConta - 1];
   if(logFile>0){
     char logMessage[MAX_LOG_MESSAGE];
-    snprintf(logMessage,MAX_LOG_MESSAGE,"%lu: transferir %d\n", pthread_self(),idConta);
+    snprintf(logMessage,MAX_LOG_MESSAGE,"%lu: lerSaldo %d\n", pthread_self(),idConta);
     writeLog(logMessage);
   }
   unlockConta(idConta);
