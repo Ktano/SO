@@ -107,6 +107,7 @@ void close_log();
 void makePipe();
 comando_t readCommand();
 void writeResult(int res, char* pipe);
+void closePipe();
 
 
 /* main*/
@@ -177,10 +178,11 @@ int main (int argc, char** argv) {
       /*Confirms all threads are terminated*/
       for(i=0;i<NUM_TRABALHADORAS;i++)
           pthread_join(tid[i],NULL);
-
+      
+      close_log();
+      closePipe();
       printf("--\n");
       printf("i-banco terminou.\n\n");
-      close_log();
       exit(EXIT_SUCCESS);
     }
 
@@ -479,6 +481,10 @@ void makePipe(){
     exit(EXIT_SUCCESS);
   }
   
+}
+
+void closePipe(){
+  close(readPipe);
 }
 
 comando_t readCommand(){

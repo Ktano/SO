@@ -47,6 +47,7 @@ void adicionarComando(int Comando, int idConta, int valor, int idContaDestino);
 void openPipeEscrita(char* file);
 void makePipe();
 int readResult();
+void closePipes();
 
 /*main*/
 
@@ -76,6 +77,7 @@ int main (int argc, char** argv) {
         
       printf("i-banco-terminal vai terminar.\n");
       printf("--\n");
+      closePipes();
       printf("--\n");
       printf("i-banco-terminal terminou.\n\n");
       exit(EXIT_SUCCESS);
@@ -97,15 +99,15 @@ int main (int argc, char** argv) {
 
       idConta = atoi(args[1]);
       valor = atoi(args[2]);
-      adicionarComando(COMANDO_DEBITAR_ID,idConta,valor,0);
       startTime = time(NULL);
+      adicionarComando(COMANDO_DEBITAR_ID,idConta,valor,0);
       if (readResult () < 0)
         printf("%s(%d, %d): Erro\n\n", COMANDO_DEBITAR, idConta, valor);  
       else{
         printf("%s(%d, %d): OK\n\n", COMANDO_DEBITAR, idConta, valor);
         /* foi consumida*/
       }
-      printf("Tempo de execucao:%f segundos\n\n", difftime(time(NULL),startTime));
+      printf("Tempo de execucao:%.1f segundos\n\n", difftime(time(NULL),startTime));
 
     }
 
@@ -120,15 +122,16 @@ int main (int argc, char** argv) {
 
       idConta = atoi(args[1]);
       valor = atoi(args[2]);
-      adicionarComando(COMANDO_CREDITAR_ID,idConta,valor,0);
       startTime = time(NULL);
+      adicionarComando(COMANDO_CREDITAR_ID,idConta,valor,0);
+ 
       if (readResult() < 0)
         printf("%s(%d, %d): Erro\n\n", COMANDO_CREDITAR, idConta, valor);
       else{
         printf("%s(%d, %d): OK\n\n", COMANDO_CREDITAR, idConta, valor);
         /* foi consumida*/
       }
-      printf("Tempo de execucao:%f segundos\n\n", difftime(time(NULL),startTime));
+      printf("Tempo de execucao:%.1f segundos\n\n", difftime(time(NULL),startTime));
     }
 
     /* Ler Saldo */
@@ -140,8 +143,8 @@ int main (int argc, char** argv) {
         continue;
       }
       idConta = atoi(args[1]);
-      adicionarComando(COMANDO_LER_SALDO_ID,idConta,0,0);
       startTime = time(NULL);
+      adicionarComando(COMANDO_LER_SALDO_ID,idConta,0,0);
       saldo = readResult ();
 
       if (saldo < 0)
@@ -151,7 +154,7 @@ int main (int argc, char** argv) {
         
         /* foi consumida*/
       }
-      printf("Tempo de execucao:%f segundos\n\n", difftime(time(NULL),startTime));
+      printf("Tempo de execucao:%.1f segundos\n\n", difftime(time(NULL),startTime));
     }
   
     /* Transferir */
@@ -166,16 +169,17 @@ int main (int argc, char** argv) {
       idConta = atoi(args[1]);
       idContaDestino = atoi(args[2]);
       valor = atoi(args[3]);
-  
-      adicionarComando(COMANDO_TRANSFERIR_ID,idConta,valor,idContaDestino);
+    
       startTime = time(NULL);
+      adicionarComando(COMANDO_TRANSFERIR_ID,idConta,valor,idContaDestino);
+      
       if (readResult () < 0)
         printf("Erro ao %s %d da conta %d para a conta %d\n\n", COMANDO_TRANSFERIR, valor, idConta, idContaDestino );
       else{
         printf("%s(%d, %d, %d): OK\n\n", COMANDO_TRANSFERIR, idConta, idContaDestino, valor);
         /* foi consumida*/
       }
-      printf("Tempo de execucao:%f segundos\n\n", difftime(time(NULL),time(NULL)));
+      printf("Tempo de execucao:%.1f segundos\n\n", difftime(time(NULL),startTime));
     }
   
     /* Simular */
@@ -247,6 +251,13 @@ void openPipe(){
     exit(EXIT_SUCCESS);
   }
 }
+
+void closePipes(){
+    close(pipeEscrita);
+    close(pipeLeitura);
+    
+}
+
 
 int readResult(){
   int res;

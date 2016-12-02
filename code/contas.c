@@ -9,7 +9,7 @@
 #include <string.h>
 
 #define atrasar() sleep(ATRASO)
-#define MAX_LOG_MESSAGE 40
+#define MAX_LOG_MESSAGE 50
 
 int contasSaldos[NUM_CONTAS];
 pthread_mutex_t MutexConta[NUM_CONTAS];
