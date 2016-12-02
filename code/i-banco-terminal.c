@@ -7,6 +7,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <time.h>
+#include <signal.h>
+
 
 #define COMANDO_DEBITAR "debitar"
 #define COMANDO_CREDITAR "creditar"
@@ -48,6 +50,7 @@ void openPipeEscrita(char* file);
 void makePipe();
 int readResult();
 void closePipes();
+void apanhaSIGPIPE();
 
 /*main*/
 
@@ -59,8 +62,16 @@ int main (int argc, char** argv) {
   if(argc>1){
     openPipeEscrita(argv[1]);
   }
-    
+   
+  
   makePipe();
+  
+    /*cria vector para tratamento do sinal SIGUSR1*/
+  if(signal(SIGPIPE,apanhaSIGPIPE)==SIG_ERR){
+    perror("ERRO ao criar tratamento de sinal");
+    exit(EXIT_SUCCESS);
+  }
+  
   printf("Bem-vinda/o ao i-banco-terminal\n\n");
 
   while (1) {
@@ -268,4 +279,11 @@ int readResult(){
   }
    return res;
    close(pipeLeitura);
+}
+
+void apanhaSIGPIPE(){
+    printf("i-banco não existe\n");
+    printf("i-banco-terminal vai fechar\n");
+    exit(EXIT_SUCCESS);
+    
 }
